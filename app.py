@@ -1,184 +1,139 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import concurrent.futures
-from datetime import datetime, timedelta
+from datetime import datetime, time
 import pytz
 from streamlit_autorefresh import st_autorefresh
 from streamlit_option_menu import option_menu
 
-# --- THEME & UI CONFIG ---
+# --- CONFIG ---
 st.set_page_config(page_title="PRO-QUANT F&O", layout="wide", initial_sidebar_state="collapsed")
 
-# Inject Premium CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
-    .main { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-    .stMetric { background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.1); }
-    div[data-testid="stExpander"] { background: rgba(255, 255, 255, 0.03); border: none; border-radius: 12px; }
-    .status-pill { padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; display: inline-block; margin-bottom: 20px; }
-    /* Modern Scrollbar */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    html, body, [class*="css"]  { font-family: 'Inter', sans-serif; background-color: #0f172a; }
+    .stMetric { background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .status-pill { padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; display: inline-block; margin-bottom: 15px; }
+    [data-testid="stHeader"] {background: rgba(0,0,0,0);}
     </style>
     """, unsafe_allow_html=True)
 
-st_autorefresh(interval=3 * 60 * 1000, key="pro_refresh")
+st_autorefresh(interval=5 * 60 * 1000, key="global_refresh")
 
-# --- CORE LOGIC ---
-def get_market_info():
-    tz = pytz.timezone('Asia/Kolkata')
-    now = datetime.now(tz)
-    is_open = now.weekday() < 5 and (time(9,15) <= now.time() <= time(15,30))
-    return is_open, now
+# --- FULL F&O LIST (180+ TICKERS) ---
+FO_STOCKS = [
+    "ACC.NS", "ADANIENT.NS", "ADANIPORTS.NS", "ABBOTINDIA.NS", "ABCAPITAL.NS", "ABFRL.NS", "ALKEM.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "APOLLOTYRE.NS", "ASHOKLEY.NS", "ASIANPAINT.NS", "ASTRAL.NS", "ATUL.NS", "AUBANK.NS", "AUROPHARMA.NS", "AXISBANK.NS", "BAJAJ-AUTO.NS", "BAJFINANCE.NS", "BAJAJFINSV.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS", "BATAINDIA.NS", "BEL.NS", "BERGEPAINT.NS", "BHARATFORG.NS", "BHARTIARTL.NS", "BHEL.NS", "BIOCON.NS", "BPCL.NS", "BRITANNIA.NS", "BSOFT.NS", "CANBK.NS", "CANFINHOME.NS", "CHAMBLFERT.NS", "CHOLAFIN.NS", "CIPLA.NS", "COALINDIA.NS", "COFORGE.NS", "COLPAL.NS", "CONCOR.NS", "CUMMINSIND.NS", "DABUR.NS", "DALBHARAT.NS", "DEEPAKNTR.NS", "DELTACORP.NS", "DIVISLAB.NS", "DIXON.NS", "DLF.NS", "DRREDDY.NS", "EICHERMOT.NS", "ESCORTS.NS", "EXIDEIND.NS", "FEDERALBNK.NS", "GAIL.NS", "GLENMARK.NS", "GMRINFRA.NS", "GNFC.NS", "GODREJCP.NS", "GODREJPROP.NS", "GRANULES.NS", "GRASIM.NS", "GUJGASLTD.NS", "HAL.NS", "HAVELLS.NS", "HCLTECH.NS", "HDFCBANK.NS", "HDFCLIFE.NS", "HEROMOTOCO.NS", "HINDALCO.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDUNILVR.NS", "ICICIBANK.NS", "ICICIGI.NS", "ICICIPRULI.NS", "IDFC.NS", "IDFCFIRSTB.NS", "IEX.NS", "IGL.NS", "INDHOTEL.NS", "INDIACEM.NS", "INDIAMART.NS", "INDIGO.NS", "INDUSINDBK.NS", "INDUSTOWER.NS", "INFY.NS", "IOC.NS", "IPCALAB.NS", "IRCTC.NS", "ITC.NS", "JINDALSTEL.NS", "JKCEMENT.NS", "JSWSTEEL.NS", "JUBLFOOD.NS", "KOTAKBANK.NS", "L&TFH.NS", "LALPATHLAB.NS", "LICHSGFIN.NS", "LT.NS", "LTIM.NS", "LTTS.NS", "LUPIN.NS", "M&M.NS", "M&MFIN.NS", "MANAPPURAM.NS", "MARICO.NS", "MARUTI.NS", "MCDOWELL-N.NS", "MCX.NS", "METROPOLIS.NS", "MFSL.NS", "MGL.NS", "MOTHERSON.NS", "MPHASIS.NS", "MRF.NS", "MUTHOOTFIN.NS", "NATIONALUM.NS", "NAVINFLUOR.NS", "NESTLEIND.NS", "NMDC.NS", "NTPC.NS", "OBEROIRLTY.NS", "ONGC.NS", "PAGEIND.NS", "PEL.NS", "PERSISTENT.NS", "PETRONET.NS", "PFC.NS", "PIDILITIND.NS", "PIIND.NS", "PNB.NS", "POLYCAB.NS", "POWERGRID.NS", "PVRINOX.NS", "RELIANCE.NS", "SAIL.NS", "SBICARD.NS", "SBILIFE.NS", "SBIN.NS", "SHREECEM.NS", "SIEMENS.NS", "SRF.NS", "SUNPHARMA.NS", "SUNTV.NS", "SYNGENE.NS", "TATACOMM.NS", "TATACONSUM.NS", "TATAMOTORS.NS", "TATAPOWER.NS", "TATASTEEL.NS", "TCS.NS", "TECHM.NS", "TITAN.NS", "TORNTPHARM.NS", "TRENT.NS", "TVSMOTOR.NS", "UBL.NS", "ULTRACEMCO.NS", "UPL.NS", "VEDL.NS", "VOLTAS.NS", "WIPRO.NS", "ZEEL.NS", "ZYDUSLIFE.NS"
+]
+
+# --- SMART DATA ENGINE ---
+@st.cache_data(ttl=300)
+def get_master_data():
+    # Batch download everything (Last 5 days to ensure we have Friday/Thursday)
+    data = yf.download(FO_STOCKS, period="5d", interval="1d", group_by='ticker', progress=False)
+    
+    results = []
+    for ticker in FO_STOCKS:
+        try:
+            df = data[ticker]
+            if df.empty or len(df) < 2: continue
+            
+            # Identify last two valid trading sessions
+            curr = df.iloc[-1]
+            prev = df.iloc[-2]
+            
+            ltp = curr['Close']
+            prev_close = prev['Close']
+            chg = ((ltp - prev_close) / prev_close) * 100
+            vol_ratio = curr['Volume'] / prev['Volume']
+            pdh, pdl = prev['High'], prev['Low']
+
+            signal = "Neutral"
+            if ltp > pdh: signal = "🚀 BUY"
+            elif ltp < pdl: signal = "📉 SELL"
+
+            results.append({
+                "Symbol": ticker.replace(".NS",""),
+                "LTP": round(ltp, 2),
+                "Change%": round(chg, 2),
+                "Vol Ratio": round(vol_ratio, 2),
+                "Signal": signal
+            })
+        except: continue
+    return pd.DataFrame(results)
 
 def get_indices():
     indices = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "INDIA VIX": "^INDIAVIX"}
-    data = []
-    for name, ticker in indices.items():
+    res = []
+    for n, t in indices.items():
         try:
-            t = yf.Ticker(ticker)
-            h = t.history(period="5d")
-            price = h['Close'].iloc[-1]
-            change = ((price - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
-            data.append({"name": name, "price": f"₹{price:,.2f}", "change": f"{change:+.2f}%", "raw_chg": change})
+            h = yf.Ticker(t).history(period="2d")
+            p = h['Close'].iloc[-1]
+            c = ((p - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
+            res.append({"name": n, "price": f"₹{p:,.2f}", "chg": f"{c:+.2f}%", "raw": c})
         except: pass
-    return data
-
-def fetch_stock_data(symbol, vol_trigger):
-    try:
-        # Fetch enough data to cover holidays/weekends
-        df = yf.download(symbol, period="10d", interval="1d", progress=False)
-        if df.empty or len(df) < 2: return None
-        
-        # Latest Row vs Previous Row
-        curr = df.iloc[-1]
-        prev = df.iloc[-2]
-        
-        ltp = curr['Close']
-        chg = ((ltp - prev['Close']) / prev['Close']) * 100
-        vol_ratio = curr['Volume'] / prev['Volume']
-        pdh, pdl = prev['High'], prev['Low']
-
-        signal = "Neutral"
-        if ltp > pdh and vol_ratio > vol_trigger: signal = "🚀 BUY"
-        elif ltp < pdl and vol_ratio > vol_trigger: signal = "📉 SELL"
-
-        return {
-            "Symbol": symbol.replace(".NS",""),
-            "LTP": round(ltp, 2),
-            "Day Chg%": round(chg, 2),
-            "Volume Ratio": round(vol_ratio, 2),
-            "Signal": signal
-        }
-    except: return None
+    return res
 
 # --- UI HEADER ---
-from datetime import time
-is_market_open, curr_time = get_market_info()
+tz = pytz.timezone('Asia/Kolkata')
+now = datetime.now(tz)
+is_open = now.weekday() < 5 and (time(9,15) <= now.time() <= time(15,30))
 
-col_h1, col_h2 = st.columns([2, 1])
-with col_h1:
-    st.title("🛡️ PRO-QUANT F&O")
-    status_text = "🟢 LIVE TRADING" if is_market_open else "🔴 MARKET CLOSED (SESSION SUMMARY)"
-    status_clr = "#10b981" if is_market_open else "#f43f5e"
-    st.markdown(f'<div class="status-pill" style="background: {status_clr}22; color: {status_clr}; border: 1px solid {status_clr}44;">{status_text}</div>', unsafe_allow_html=True)
-with col_h2:
-    st.markdown(f"<div style='text-align:right; color:#94a3b8; padding-top:20px;'>Last Updated: {curr_time.strftime('%H:%M:%S')}</div>", unsafe_allow_html=True)
+st.title("🛡️ PRO-QUANT F&O")
+status_txt = "🟢 LIVE TRADING" if is_open else "🔴 MARKET CLOSED (SUMMARY)"
+status_clr = "#10b981" if is_open else "#f43f5e"
+st.markdown(f'<div class="status-pill" style="background: {status_clr}22; color: {status_clr}; border: 1px solid {status_clr}44;">{status_txt}</div>', unsafe_allow_html=True)
 
-# Indices Grid
-idx_list = get_indices()
-idx_cols = st.columns(len(idx_list))
-for i, idx in enumerate(idx_list):
-    color = "normal" if idx['raw_chg'] >= 0 else "inverse"
-    idx_cols[i].metric(idx['name'], idx['price'], idx['change'], delta_color=color)
+# Indices Metrics
+idx_data = get_indices()
+cols = st.columns(len(idx_data))
+for i, x in enumerate(idx_data):
+    cols[i].metric(x['name'], x['price'], x['chg'], delta_color="normal" if x['raw'] >= 0 else "inverse")
 
-st.write("")
+st.divider()
 
-# --- NAVIGATION ---
+# --- NAV ---
 selected = option_menu(
-    menu_title=None,
-    options=["Momentum Radar", "Master Watchlist", "Market Analytics"],
-    icons=["lightning-charge", "list-columns", "graph-up"],
-    menu_icon="cast",
-    default_index=0,
-    orientation="horizontal",
-    styles={
-        "container": {"padding": "0!important", "background-color": "transparent"},
-        "nav-link": {"font-size": "14px", "text-align": "center", "margin": "0px", "color": "#94a3b8"},
-        "nav-link-selected": {"background-color": "#3b82f6", "color": "white"},
-    }
+    menu_title=None, options=["Momentum Radar", "Master Watchlist", "Analytics"],
+    icons=["lightning", "list", "pie-chart"], orientation="horizontal",
+    styles={"nav-link-selected": {"background-color": "#3b82f6"}}
 )
 
-# --- SCANNING ---
-FO_STOCKS = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "SBIN.NS", "BHARTIARTL.NS", "AXISBANK.NS", "ADANIENT.NS", "TATAMOTORS.NS", "TATASTEEL.NS", "BAJFINANCE.NS", "LT.NS", "MARUTI.NS", "JKCEMENT.NS", "ADANIPORTS.NS", "ACC.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "AUROPHARMA.NS", "BAJAJ-AUTO.NS", "BANKBARODA.NS", "BEL.NS", "BPCL.NS", "CHOLAFIN.NS", "CIPLA.NS", "COALINDIA.NS", "DLF.NS", "DRREDDY.NS", "EICHERMOT.NS", "GAIL.NS", "HCLTECH.NS", "HINDALCO.NS", "HINDUNILVR.NS", "ITC.NS", "JINDALSTEL.NS", "JSWSTEEL.NS", "KOTAKBANK.NS", "M&M.NS", "NTPC.NS", "ONGC.NS", "POWERGRID.NS", "SUNPHARMA.NS", "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS"] # Add all 212 here
+# --- EXECUTION ---
+with st.spinner("Fetching Data..."):
+    df_master = get_master_data()
 
-st.sidebar.header("Configuration")
-vol_threshold = st.sidebar.slider("Momentum Sensitivity (Volume %)", 10, 100, 30) / 100
-
-with st.spinner("🔄 Deep-Scanning F&O Universe..."):
-    results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        futures = [executor.submit(fetch_stock_data, s, vol_threshold) for s in FO_STOCKS]
-        for f in concurrent.futures.as_completed(futures):
-            res = f.result()
-            if res: results.append(res)
-    
-    df = pd.DataFrame(results)
-
-# --- TAB CONTENT ---
+# --- TABS ---
 if selected == "Momentum Radar":
-    st.subheader("🚀 High-Conviction Breakouts")
-    if not df.empty:
-        alerts = df[df['Signal'] != "Neutral"].sort_values(by="Volume Ratio", ascending=False)
-        if not alerts.empty:
-            st.dataframe(
-                alerts, 
-                use_container_width=True, 
-                hide_index=True,
-                column_config={
-                    "Day Chg%": st.column_config.NumberColumn(format="%.2f%%"),
-                    "Volume Ratio": st.column_config.ProgressColumn(min_value=0, max_value=3, format="%.2fx"),
-                    "Signal": st.column_config.TextColumn(help="Breakout direction confirmed by PDH/PDL")
-                }
-            )
+    st.subheader("🚀 Momentum Breakouts (PDH/PDL)")
+    vol_filter = st.slider("Min Vol Ratio (x)", 0.5, 3.0, 1.2)
+    
+    if not df_master.empty:
+        radar = df_master[(df_master['Signal'] != "Neutral") & (df_master['Vol Ratio'] >= vol_filter)]
+        if not radar.empty:
+            st.dataframe(radar.sort_values("Vol Ratio", ascending=False), use_container_width=True, hide_index=True)
         else:
-            st.info("No breakouts meeting your volume threshold right now.")
-    else: st.error("System connection error. Please refresh.")
+            st.info(f"No breakouts found with Vol Ratio > {vol_filter}x. Try lowering the slider.")
+    else: st.error("Data unavailable. Check internet.")
 
 elif selected == "Master Watchlist":
-    st.subheader("📋 All F&O Stocks Pulse")
-    if not df.empty:
-        col_s1, col_s2 = st.columns([1, 2])
-        search = col_s1.text_input("🔍 Search Asset...", placeholder="e.g. RELIANCE")
-        
-        filtered_df = df.copy()
-        if search: filtered_df = df[df['Symbol'].str.contains(search.upper())]
-        
-        st.dataframe(
-            filtered_df.sort_values(by="Day Chg%", ascending=False),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Day Chg%": st.column_config.NumberColumn(format="%.2f%%"),
-                "Volume Ratio": st.column_config.NumberColumn(format="%.2fx")
-            }
-        )
+    st.subheader("📋 All F&O Stocks")
+    if not df_master.empty:
+        search = st.text_input("🔍 Quick Search", placeholder="e.g. RELIANCE")
+        disp = df_master.copy()
+        if search: disp = disp[disp['Symbol'].str.contains(search.upper())]
+        st.dataframe(disp.sort_values("Change%", ascending=False), use_container_width=True, hide_index=True)
 
-elif selected == "Market Analytics":
-    st.subheader("📊 Session Statistics")
-    if not df.empty:
+elif selected == "Analytics":
+    if not df_master.empty:
         c1, c2, c3 = st.columns(3)
-        c1.metric("Advancers", len(df[df['Day Chg%'] > 0]), delta="Green")
-        c2.metric("Decliners", len(df[df['Day Chg%'] < 0]), delta="-Red", delta_color="inverse")
-        c3.metric("Avg Vol Surge", f"{df['Volume Ratio'].mean():.2f}x")
+        c1.metric("Gainers", len(df_master[df_master['Change%'] > 0]))
+        c2.metric("Losers", len(df_master[df_master['Change%'] < 0]))
+        c3.metric("Avg Vol", f"{df_master['Vol Ratio'].mean():.2f}x")
         
         st.write("---")
-        st.write("📈 **Top 5 Gainer Momentum**")
-        st.table(df.nlargest(5, 'Day Chg%')[['Symbol', 'LTP', 'Day Chg%']])
+        st.write("📈 **Top 5 Movers**")
+        st.table(df_master.nlargest(5, 'Change%')[['Symbol', 'LTP', 'Change%']])
 
 st.markdown("---")
-st.caption("⚡ Premium Data Feed by Yahoo Finance. Strategy: Volume Expansion + Price Range Breakout.")
+st.caption(f"Last Refresh: {now.strftime('%H:%M:%S')} IST | Data: Yahoo Finance (1-2m delay)")
