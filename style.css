@@ -1,44 +1,91 @@
-/* Premium Terminal Theme */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+/* 1. GLOBAL SETTINGS */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 
 .main {
-    background-color: #05070a;
+    background-color: #05070a; /* Deep Black Terminal Background */
+    color: #e2e8f0;
 }
 
-/* Blinking Price Animation */
+/* 2. BLINKING PRICE ANIMATION */
 @keyframes blink-glow {
     0% { opacity: 1; }
-    50% { opacity: 0.5; text-shadow: 0 0 10px #58a6ff; }
+    50% { opacity: 0.4; text-shadow: 0 0 12px #58a6ff; }
     100% { opacity: 1; }
 }
 
 .price-blink {
     animation: blink-glow 2s infinite;
     font-family: 'JetBrains Mono', monospace;
-    font-weight: bold;
-    color: #ffffff;
+    font-weight: 700;
+    font-size: 28px !important;
+    color: #ffffff !important;
+    letter-spacing: -1px;
 }
 
-/* Metric Cards */
+/* 3. PROFESSIONAL METRIC CARDS */
 div[data-testid="stMetric"] {
-    background: linear-gradient(145deg, #0d1117, #161b22);
-    border: 1px solid #30363d;
-    border-radius: 12px;
+    background: linear-gradient(145deg, #0d1117, #161b22) !important;
+    border: 1px solid #30363d !important;
+    border-radius: 12px !important;
     padding: 20px !important;
-    transition: transform 0.3s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+    transition: all 0.3s ease;
 }
 
 div[data-testid="stMetric"]:hover {
-    transform: translateY(-5px);
-    border-color: #58a6ff;
+    border-color: #58a6ff !important;
+    transform: translateY(-3px);
 }
 
-/* Positive/Negative Rows */
-.pos-bg { background-color: rgba(16, 185, 129, 0.15) !important; color: #10b981 !important; padding: 5px; border-radius: 4px; font-weight: bold; }
-.neg-bg { background-color: rgba(244, 63, 94, 0.15) !important; color: #f43f5e !important; padding: 5px; border-radius: 4px; font-weight: bold; }
+div[data-testid="stMetricLabel"] > div {
+    color: #8b949e !important;
+    font-size: 14px !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
 
-/* Sidebar */
+/* 4. POSITIVE / NEGATIVE HIGHLIGHTS */
+[data-testid="stMetricDelta"] > div {
+    font-weight: 800 !important;
+    font-size: 18px !important;
+}
+
+/* 5. SIDEBAR NAVIGATION */
 section[data-testid="stSidebar"] {
     background-color: #010409 !important;
-    border-right: 1px solid #30363d;
+    border-right: 1px solid #30363d !important;
+}
+
+/* 6. STATUS PILLS (LIVE/CLOSED) */
+.status-pill {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-block;
+    border: 1px solid;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+}
+
+/* 7. TABLE (DATAFRAME) STYLING */
+.stDataFrame {
+    border: 1px solid #30363d !important;
+    border-radius: 10px !important;
+    background-color: #0d1117 !important;
+}
+
+/* 8. TITLES & HEADERS */
+h1, h2, h3 {
+    color: #58a6ff !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* 9. TOP PICK CARDS (BULL/BEAR) */
+.pick-card {
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-left: 5px solid;
 }
