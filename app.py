@@ -1,130 +1,164 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, time
+from datetime import datetime
 import pytz
 from streamlit_autorefresh import st_autorefresh
 from streamlit_option_menu import option_menu
 
-# --- CONFIG ---
-st.set_page_config(page_title="PRO-QUANT F&O", layout="wide", initial_sidebar_state="collapsed")
+# --- THEME CONFIG ---
+st.set_page_config(page_title="PRO-QUANT ELITE", layout="wide", initial_sidebar_state="expanded")
 
+# Advanced CSS for Multi-Color UI & Professional Tables
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    html, body, [class*="css"]  { font-family: 'Inter', sans-serif; background-color: #0f172a; }
-    .stMetric { background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }
-    .status-pill { padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; display: inline-block; margin-bottom: 15px; }
-    [data-testid="stHeader"] {background: rgba(0,0,0,0);}
-    /* Target delta colors specifically */
-    [data-testid="stMetricDelta"] > div { font-weight: bold !important; }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #0b0e14; color: #e2e8f0; }
+    .stMetric { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 12px; padding: 15px; border: 1px solid #334155; }
+    .stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+    [data-testid="stSidebar"] { background-color: #0f172a; border-right: 1px solid #334155; }
+    .status-pill { padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: bold; }
+    h1, h2, h3 { color: #f8fafc; font-weight: 700; }
+    /* Metric Delta Styling */
+    [data-testid="stMetricDelta"] > div { font-weight: 700 !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st_autorefresh(interval=5 * 60 * 1000, key="global_refresh")
 
-# --- TICKER LISTS ---
+# --- DATA TICKERS ---
 INDICES = {
-    "NIFTY 50": "^NSEI", 
-    "BANK NIFTY": "^NSEBANK", 
-    "INDIA VIX": "^INDIAVIX"
+    "NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "FIN NIFTY": "NIFTY_FIN_SERVICE.NS",
+    "NIFTY NEXT 50": "^NSMIDCP50", "INDIA VIX": "^INDIAVIX", "NIFTY IT": "NIFTY_IT.NS"
 }
 
 SECTORS = {
-    "IT": "NIFTY_IT.NS",
-    "AUTO": "NIFTY_AUTO.NS",
-    "PHARMA": "NIFTY_PHARMA.NS",
-    "METAL": "NIFTY_METAL.NS",
-    "REALTY": "NIFTY_REALTY.NS",
-    "FMCG": "NIFTY_FMCG.NS",
-    "ENERGY": "NIFTY_ENERGY.NS",
-    "INFRA": "NIFTY_INFRA.NS"
+    "IT": "NIFTY_IT.NS", "AUTO": "NIFTY_AUTO.NS", "PHARMA": "NIFTY_PHARMA.NS",
+    "METAL": "NIFTY_METAL.NS", "REALTY": "NIFTY_REALTY.NS", "FMCG": "NIFTY_FMCG.NS",
+    "ENERGY": "NIFTY_ENERGY.NS", "INFRA": "NIFTY_INFRA.NS", "BANKS": "NIFTY_BANK.NS"
 }
 
-# Full F&O Tickers
 FO_STOCKS = [
-    "ACC.NS", "ADANIENT.NS", "ADANIPORTS.NS", "ABBOTINDIA.NS", "ABCAPITAL.NS", "ABFRL.NS", "ALKEM.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "APOLLOTYRE.NS", "ASHOKLEY.NS", "ASIANPAINT.NS", "ASTRAL.NS", "ATUL.NS", "AUBANK.NS", "AUROPHARMA.NS", "AXISBANK.NS", "BAJAJ-AUTO.NS", "BAJFINANCE.NS", "BAJAJFINSV.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS", "BATAINDIA.NS", "BEL.NS", "BERGEPAINT.NS", "BHARATFORG.NS", "BHARTIARTL.NS", "BHEL.NS", "BIOCON.NS", "BPCL.NS", "BRITANNIA.NS", "BSOFT.NS", "CANBK.NS", "CANFINHOME.NS", "CHAMBLFERT.NS", "CHOLAFIN.NS", "CIPLA.NS", "COALINDIA.NS", "COFORGE.NS", "COLPAL.NS", "CONCOR.NS", "CUMMINSIND.NS", "DABUR.NS", "DALBHARAT.NS", "DEEPAKNTR.NS", "DELTACORP.NS", "DIVISLAB.NS", "DIXON.NS", "DLF.NS", "DRREDDY.NS", "EICHERMOT.NS", "ESCORTS.NS", "EXIDEIND.NS", "FEDERALBNK.NS", "GAIL.NS", "GLENMARK.NS", "GMRINFRA.NS", "GNFC.NS", "GODREJCP.NS", "GODREJPROP.NS", "GRANULES.NS", "GRASIM.NS", "GUJGASLTD.NS", "HAL.NS", "HAVELLS.NS", "HCLTECH.NS", "HDFCBANK.NS", "HDFCLIFE.NS", "HEROMOTOCO.NS", "HINDALCO.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDUNILVR.NS", "ICICIBANK.NS", "ICICIGI.NS", "ICICIPRULI.NS", "IDFC.NS", "IDFCFIRSTB.NS", "IEX.NS", "IGL.NS", "INDHOTEL.NS", "INDIACEM.NS", "INDIAMART.NS", "INDIGO.NS", "INDUSINDBK.NS", "INDUSTOWER.NS", "INFY.NS", "IOC.NS", "IPCALAB.NS", "IRCTC.NS", "ITC.NS", "JINDALSTEL.NS", "JKCEMENT.NS", "JSWSTEEL.NS", "JUBLFOOD.NS", "KOTAKBANK.NS", "L&TFH.NS", "LALPATHLAB.NS", "LICHSGFIN.NS", "LT.NS", "LTIM.NS", "LTTS.NS", "LUPIN.NS", "M&M.NS", "M&MFIN.NS", "MANAPPURAM.NS", "MARICO.NS", "MARUTI.NS", "MCDOWELL-N.NS", "MCX.NS", "METROPOLIS.NS", "MFSL.NS", "MGL.NS", "MOTHERSON.NS", "MPHASIS.NS", "MRF.NS", "MUTHOOTFIN.NS", "NATIONALUM.NS", "NAVINFLUOR.NS", "NESTLEIND.NS", "NMDC.NS", "NTPC.NS", "OBEROIRLTY.NS", "ONGC.NS", "PAGEIND.NS", "PEL.NS", "PERSISTENT.NS", "PETRONET.NS", "PFC.NS", "PIDILITIND.NS", "PIIND.NS", "PNB.NS", "POLYCAB.NS", "POWERGRID.NS", "PVRINOX.NS", "RELIANCE.NS", "SAIL.NS", "SBICARD.NS", "SBILIFE.NS", "SBIN.NS", "SHREECEM.NS", "SIEMENS.NS", "SRF.NS", "SUNPHARMA.NS", "SUNTV.NS", "SYNGENE.NS", "TATACOMM.NS", "TATACONSUM.NS", "TATAMOTORS.NS", "TATAPOWER.NS", "TATASTEEL.NS", "TCS.NS", "TECHM.NS", "TITAN.NS", "TORNTPHARM.NS", "TRENT.NS", "TVSMOTOR.NS", "UBL.NS", "ULTRACEMCO.NS", "UPL.NS", "VEDL.NS", "VOLTAS.NS", "WIPRO.NS", "ZEEL.NS", "ZYDUSLIFE.NS"
-]
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "SBIN.NS", "BHARTIARTL.NS", "AXISBANK.NS", 
+    "ADANIENT.NS", "TATAMOTORS.NS", "TATASTEEL.NS", "BAJFINANCE.NS", "LT.NS", "MARUTI.NS", "JKCEMENT.NS", "ADANIPORTS.NS",
+    "ACC.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AUROPHARMA.NS", "BAJAJ-AUTO.NS", "BANKBARODA.NS", 
+    "BEL.NS", "BPCL.NS", "CHOLAFIN.NS", "CIPLA.NS", "COALINDIA.NS", "DLF.NS", "DRREDDY.NS", "EICHERMOT.NS", "GAIL.NS", 
+    "HCLTECH.NS", "HINDALCO.NS", "HINDUNILVR.NS", "ITC.NS", "JINDALSTEL.NS", "JSWSTEEL.NS", "KOTAKBANK.NS", "M&M.NS", 
+    "NTPC.NS", "ONGC.NS", "POWERGRID.NS", "SUNPHARMA.NS", "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS", "ZEEL.NS"
+] # Expand as needed
 
 # --- DATA ENGINE ---
 @st.cache_data(ttl=300)
-def get_dashboard_data():
-    all_tickers = FO_STOCKS + list(INDICES.values()) + list(SECTORS.values())
+def fetch_all_data():
+    all_tickers = list(set(FO_STOCKS + list(INDICES.values()) + list(SECTORS.values())))
     raw = yf.download(all_tickers, period="5d", interval="1d", group_by='ticker', progress=False)
     
-    stock_res, index_res, sector_res = [], [], []
-
-    # Process Stocks
+    stock_list = []
     for s in FO_STOCKS:
         try:
             d = raw[s]
             p, prev = d['Close'].iloc[-1], d['Close'].iloc[-2]
-            chg = ((p - prev) / prev) * 100
+            chg_prc = p - prev
+            chg_pct = (chg_prc / prev) * 100
             vol_r = d['Volume'].iloc[-1] / d['Volume'].iloc[-2]
-            signal = "🚀 BUY" if p > d['High'].iloc[-2] else "📉 SELL" if p < d['Low'].iloc[-2] else "Neutral"
-            stock_res.append({"Symbol": s.replace(".NS",""), "LTP": round(p, 2), "Change%": round(chg, 2), "Vol Ratio": round(vol_r, 2), "Signal": signal})
+            stock_list.append({
+                "Symbol": s.replace(".NS",""), "LTP": round(p, 2), 
+                "Change": round(chg_prc, 2), "Change%": round(chg_pct, 2), 
+                "Vol Ratio": round(vol_r, 2)
+            })
+        except: pass
+    
+    idx_list = []
+    for name, sym in INDICES.items():
+        try:
+            d = raw[sym]
+            p, prev = d['Close'].iloc[-1], d['Close'].iloc[-2]
+            idx_list.append({"Name": name, "Price": round(p, 2), "Change": round(p-prev, 2), "Change%": round(((p-prev)/prev)*100, 2)})
         except: pass
 
-    # Process Indices & Sectors
-    for label, items in [("Index", INDICES), ("Sector", SECTORS)]:
-        for name, sym in items.items():
-            try:
-                d = raw[sym]
-                p, prev = d['Close'].iloc[-1], d['Close'].iloc[-2]
-                chg = round(((p - prev) / prev) * 100, 2)
-                entry = {"name": name, "price": f"₹{p:,.2f}", "chg": f"{chg:+}%", "raw": chg}
-                if label == "Index": index_res.append(entry)
-                else: sector_res.append(entry)
-            except: pass
+    sec_list = []
+    for name, sym in SECTORS.items():
+        try:
+            d = raw[sym]
+            p, prev = d['Close'].iloc[-1], d['Close'].iloc[-2]
+            sec_list.append({"Sector": name, "Price": round(p, 2), "Change%": round(((p-prev)/prev)*100, 2)})
+        except: pass
 
-    return pd.DataFrame(stock_res), index_res, sector_res
+    return pd.DataFrame(stock_list), pd.DataFrame(idx_list), pd.DataFrame(sec_list)
 
-# --- APP UI ---
-tz = pytz.timezone('Asia/Kolkata')
-is_open = now.weekday() < 5 and (time(9,15) <= datetime.now(tz).time() <= time(15,30)) if 'now' in locals() else False
+# --- SIDEBAR MENU ---
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
+    st.title("PRO-QUANT")
+    menu = option_menu(
+        menu_title=None,
+        options=["Dashboard", "Indices", "F&O Stocks", "Sector Heatmap"],
+        icons=["speedometer2", "graph-up", "currency-exchange", "grid-3x3-gap"],
+        menu_icon="cast", default_index=0,
+        styles={
+            "container": {"background-color": "#0f172a"},
+            "nav-link": {"color": "#94a3b8", "font-size": "14px", "text-align": "left"},
+            "nav-link-selected": {"background-color": "#2563eb", "color": "white"},
+        }
+    )
+    st.write("---")
+    tz = pytz.timezone('Asia/Kolkata')
+    st.caption(f"Last Sync: {datetime.now(tz).strftime('%H:%M:%S')}")
 
-st.title("🛡️ PRO-QUANT F&O")
-st.markdown(f'<div class="status-pill" style="background: {"#10b981" if is_open else "#f43f5e"}22; color: {"#10b981" if is_open else "#f43f5e"};">{"🟢 LIVE" if is_open else "🔴 CLOSED"}</div>', unsafe_allow_html=True)
+# --- APP EXECUTION ---
+df_stocks, df_indices, df_sectors = fetch_all_data()
 
-df_master, idx_data, sct_data = get_dashboard_data()
+if menu == "Dashboard":
+    st.header("🏠 Market Overview")
+    
+    # Top Metrics
+    m1, m2, m3 = st.columns(3)
+    nifty = df_indices[df_indices['Name'] == "NIFTY 50"].iloc[0]
+    m1.metric("NIFTY 50", f"₹{nifty['Price']}", f"{nifty['Change%']}%")
+    
+    vix = df_indices[df_indices['Name'] == "INDIA VIX"].iloc[0]
+    m2.metric("INDIA VIX", vix['Price'], f"{vix['Change%']}%", delta_color="inverse")
+    
+    m3.metric("Adv/Dec Ratio", f"{len(df_stocks[df_stocks['Change%']>0])}/{len(df_stocks[df_stocks['Change%']<0])}")
 
-# Index Bar
-cols = st.columns(len(idx_data))
-for i, x in enumerate(idx_data):
-    # INDIA VIX Inverse Logic: If up, it's red.
-    d_mode = "inverse" if "VIX" in x['name'] else "normal"
-    cols[i].metric(x['name'], x['price'], x['chg'], delta_color=d_mode)
+    st.write("---")
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        st.subheader("🟢 Top Gainers")
+        st.dataframe(df_stocks.nlargest(5, 'Change%')[['Symbol', 'LTP', 'Change%']], use_container_width=True, hide_index=True)
+        
+    with col_right:
+        st.subheader("🔴 Top Losers")
+        st.dataframe(df_stocks.nsmallest(5, 'Change%')[['Symbol', 'LTP', 'Change%']], use_container_width=True, hide_index=True)
 
-st.divider()
+elif menu == "Indices":
+    st.header("📈 Major Indices")
+    st.table(df_indices.style.format({"Price": "₹{:,.2f}", "Change": "{:+,.2f}", "Change%": "{:+.2f}%"}).applymap(lambda x: 'color: #10b981' if isinstance(x, (int, float)) and x > 0 else 'color: #f43f5e' if isinstance(x, (int, float)) and x < 0 else '', subset=['Change', 'Change%']))
 
-# Navigation
-selected = option_menu(
-    menu_title=None, options=["Momentum Radar", "Sector Pulse", "Watchlist"],
-    icons=["lightning", "grid", "list"], orientation="horizontal",
-    styles={"nav-link-selected": {"background-color": "#3b82f6"}}
-)
+elif menu == "F&O Stocks":
+    st.header("💰 F&O Stock Monitor")
+    search = st.text_input("🔍 Search Stock Name...")
+    disp = df_stocks.copy()
+    if search: disp = disp[disp['Symbol'].str.contains(search.upper())]
+    
+    st.dataframe(
+        disp.sort_values("Change%", ascending=False),
+        use_container_width=True, hide_index=True,
+        column_config={
+            "Change%": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Change": st.column_config.NumberColumn(format="%+.2f"),
+            "Vol Ratio": st.column_config.ProgressColumn(min_value=0, max_value=3)
+        }
+    )
 
-if selected == "Momentum Radar":
-    st.subheader("🚀 High Volume Breakouts")
-    v_f = st.slider("Min Vol Ratio", 0.5, 3.0, 1.2)
-    radar = df_master[(df_master['Signal'] != "Neutral") & (df_master['Vol Ratio'] >= v_f)]
-    st.dataframe(radar.sort_values("Vol Ratio", ascending=False), use_container_width=True, hide_index=True)
-
-elif selected == "Sector Pulse":
-    st.subheader("🏗️ Sector Wise Performance")
-    s_cols = st.columns(4)
-    for i, s in enumerate(sct_data):
-        with s_cols[i % 4]:
-            st.metric(s['name'], s['price'], s['chg'], delta_color="normal")
+elif menu == "Sector Heatmap":
+    st.header("🧱 Sector Pulse")
+    s_cols = st.columns(3)
+    for i, row in df_sectors.iterrows():
+        with s_cols[i % 3]:
+            st.metric(row['Sector'], f"₹{row['Price']}", f"{row['Change%']}%")
     
     st.write("---")
-    st.info("💡 Strategy: Identify the top performing sector above, then search for its stocks in the Watchlist.")
-
-elif selected == "Watchlist":
-    st.subheader("📋 Complete F&O List")
-    search = st.text_input("Search Symbol...")
-    disp = df_master.copy()
-    if search: disp = disp[disp['Symbol'].str.contains(search.upper())]
-    st.dataframe(disp.sort_values("Change%", ascending=False), use_container_width=True, hide_index=True)
-
-st.caption(f"Last Update: {datetime.now(tz).strftime('%H:%M:%S')} IST")
+    st.subheader("📊 Relative Strength Map")
+    st.bar_chart(df_sectors.set_index('Sector')['Change%'])
