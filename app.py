@@ -7,149 +7,131 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from streamlit_option_menu import option_menu
 
-# --- 1. SETTINGS & CSS ---
-st.set_page_config(page_title="PRO-QUANT ELITE v7.1", layout="wide")
+# --- MODULE 0: CORE CONFIG & DATA ENGINE ---
+st.set_page_config(page_title="PRO-QUANT TERMINAL v8.0", layout="wide", initial_sidebar_state="expanded")
 
-def local_css(file_name):
+def load_ui():
     try:
-        with open(file_name) as f:
+        with open("style.css") as f:
             st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
     except: pass
 
-local_css("style.css")
-st_autorefresh(interval=3 * 60 * 1000, key="global_sync")
+load_ui()
+st_autorefresh(interval=3 * 60 * 1000, key="global_refresh")
 
-# --- 2. THE COMPLETE 212 F&O DATABASE (Corrected & Categorized) ---
 SECTOR_MAP = {
     "BANKS": ["HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "AXISBANK.NS", "KOTAKBANK.NS", "AUBANK.NS", "FEDERALBNK.NS", "IDFCFIRSTB.NS", "BANKBARODA.NS", "PNB.NS", "CANBK.NS", "BANDHANBNK.NS", "INDUSINDBK.NS", "IDFC.NS"],
-    "IT": ["TCS.NS", "INFY.NS", "HCLTECH.NS", "WIPRO.NS", "LTIM.NS", "COFORGE.NS", "MPHASIS.NS", "TECHM.NS", "PERSISTENT.NS", "LTTS.NS", "BSOFT.NS", "KPITTECH.NS", "OFSS.NS"],
-    "AUTO": ["TATAMOTORS.NS", "MARUTI.NS", "M&M.NS", "BAJAJ-AUTO.NS", "HEROMOTOCO.NS", "EICHERMOT.NS", "ASHOKLEY.NS", "TVSMOTOR.NS", "BALKRISIND.NS", "BHARATFORG.NS", "ESCORTS.NS", "MOTHERSON.NS"],
+    "IT": ["TCS.NS", "INFY.NS", "HCLTECH.NS", "WIPRO.NS", "LTIM.NS", "COFORGE.NS", "MPHASIS.NS", "TECHM.NS", "PERSISTENT.NS", "LTTS.NS", "BSOFT.NS", "KPITTECH.NS"],
+    "AUTO": ["TATAMOTORS.NS", "MARUTI.NS", "M&M.NS", "BAJAJ-AUTO.NS", "HEROMOTOCO.NS", "EICHERMOT.NS", "ASHOKLEY.NS", "TVSMOTOR.NS", "BALKRISIND.NS", "BHARATFORG.NS", "ESCORTS.NS"],
     "METALS": ["TATASTEEL.NS", "JINDALSTEL.NS", "HINDALCO.NS", "JSWSTEEL.NS", "VEDL.NS", "SAIL.NS", "NATIONALUM.NS", "NMDC.NS", "HINDCOPPER.NS"],
-    "ENERGY/POWER": ["RELIANCE.NS", "ONGC.NS", "BPCL.NS", "IOC.NS", "NTPC.NS", "POWERGRID.NS", "ADANIENT.NS", "HINDPETRO.NS", "TATAPOWER.NS", "GAIL.NS", "SUZLON.NS", "COALINDIA.NS", "NHPC.NS", "SJVN.NS", "RECLTD.NS", "PFC.NS"],
+    "ENERGY": ["RELIANCE.NS", "ONGC.NS", "BPCL.NS", "IOC.NS", "NTPC.NS", "POWERGRID.NS", "ADANIENT.NS", "HINDPETRO.NS", "TATAPOWER.NS", "GAIL.NS", "SUZLON.NS", "COALINDIA.NS"],
     "PHARMA": ["SUNPHARMA.NS", "CIPLA.NS", "DRREDDY.NS", "DIVISLAB.NS", "AUROPHARMA.NS", "LUPIN.NS", "ALKEM.NS", "BIOCON.NS", "GLENMARK.NS", "TORNTPHARM.NS", "ZYDUSLIFE.NS", "APOLLOHOSP.NS"],
-    "CEMENT/INFRA": ["ULTRACEMCO.NS", "GRASIM.NS", "JKCEMENT.NS", "ACC.NS", "AMBUJACEM.NS", "LT.NS", "ADANIPORTS.NS", "DLF.NS", "GODREJPROP.NS", "OBEROIRLTY.NS", "BEL.NS", "BHEL.NS", "HAL.NS", "MAZDOCK.NS", "RVNL.NS", "IRCTC.NS"],
-    "FMCG/RETAIL": ["ITC.NS", "HINDUNILVR.NS", "NESTLEIND.NS", "BRITANNIA.NS", "DABUR.NS", "TATACONSUM.NS", "COLPAL.NS", "TITAN.NS", "ASIANPAINT.NS", "TRENT.NS", "ABFRL.NS", "ZOMATO.NS", "VBL.NS", "JUBLFOOD.NS"],
-    "NBFC/FINANCE": ["BAJFINANCE.NS", "BAJAJFINSV.NS", "CHOLAFIN.NS", "MUTHOOTFIN.NS", "M&MFIN.NS", "SBILIFE.NS", "HDFCLIFE.NS", "ICICIGI.NS", "SHRIRAMFIN.NS", "L&TFH.NS", "ABCAPITAL.NS", "MNAPPURAM.NS"],
-    "OTHERS": ["SRF.NS", "UPL.NS", "CHAMBLFERT.NS", "DEEPAKNTR.NS", "NAVINFLUOR.NS", "POLYCAB.NS", "DIXON.NS", "INDIGO.NS", "IEX.NS", "PVRINOX.NS", "ZEEL.NS", "IDEA.NS", "MCX.NS"]
+    "INFRA": ["ULTRACEMCO.NS", "GRASIM.NS", "JKCEMENT.NS", "ACC.NS", "AMBUJACEM.NS", "LT.NS", "ADANIPORTS.NS", "DLF.NS", "GODREJPROP.NS", "OBEROIRLTY.NS", "BEL.NS", "BHEL.NS", "HAL.NS", "MAZDOCK.NS", "RVNL.NS"],
+    "FMCG": ["ITC.NS", "HINDUNILVR.NS", "NESTLEIND.NS", "BRITANNIA.NS", "DABUR.NS", "TATACONSUM.NS", "COLPAL.NS", "TITAN.NS", "TRENT.NS", "ABFRL.NS", "ZOMATO.NS", "VBL.NS"],
+    "FINANCE": ["BAJFINANCE.NS", "BAJAJFINSV.NS", "CHOLAFIN.NS", "MUTHOOTFIN.NS", "M&MFIN.NS", "PFC.NS", "REC.NS", "SBILIFE.NS", "HDFCLIFE.NS", "ICICIGI.NS", "SHRIRAMFIN.NS", "L&TFH.NS"],
+    "OTHERS": ["SRF.NS", "UPL.NS", "CHAMBLFERT.NS", "DEEPAKNTR.NS", "NAVINFLUOR.NS", "POLYCAB.NS", "DIXON.NS", "INDIGO.NS", "IEX.NS", "PVRINOX.NS", "ZEEL.NS", "IDEA.NS"]
 }
 
 ALL_STOCKS = [s for sub in SECTOR_MAP.values() for s in sub]
 INDICES = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "INDIA VIX": "^INDIAVIX"}
 
-# --- 3. THE VOLUME SCORING ENGINE ---
-def calculate_volume_score(ratio):
-    if ratio >= 3.0: return 30
-    elif ratio >= 2.5: return 27
-    elif ratio >= 2.0: return 24
-    elif ratio >= 1.75: return 20
-    elif ratio >= 1.5: return 16
-    elif ratio >= 1.25: return 12
-    elif ratio >= 1.1: return 8
-    elif ratio >= 1.0: return 4
-    return 0
-
 @st.cache_data(ttl=120)
-def fetch_master_data():
+def get_data():
     all_tkr = list(set(ALL_STOCKS + list(INDICES.values())))
     raw = yf.download(all_tkr, period="7d", interval="1d", group_by='ticker', progress=False)
-    
     s_rows, i_rows = [], []
     for t in all_tkr:
         try:
             df = raw[t].dropna()
-            if df.empty or len(df) < 2: continue
+            if len(df) < 2: continue
             curr, prev = df.iloc[-1], df.iloc[-2]
             p, prev_p = curr['Close'], prev['Close']
             chg_v, chg_p = p - prev_p, ((p - prev_p)/prev_p)*100
-            
             if t in ALL_STOCKS:
                 vr = curr['Volume']/prev['Volume'] if prev['Volume']>0 else 0
-                v_score = calculate_volume_score(vr)
+                v_score = 30 if vr>=3 else 24 if vr>=2 else 16 if vr>=1.5 else 8 if vr>=1.1 else 0
                 sig = "🚀 BUY" if p > prev['High'] else "📉 SELL" if p < prev['Low'] else "Neutral"
                 sec = next((k for k, v in SECTOR_MAP.items() if t in v), "Other")
-                s_rows.append({
-                    "Sector": sec, "Symbol": t.replace(".NS",""), 
-                    "LTP": round(p, 2), "Change(₹)": round(chg_v, 2), "Change(%)": round(chg_p, 2), 
-                    "Vol_Ratio": round(vr, 2), "Vol_Score": v_score, "Signal": sig
-                })
+                s_rows.append({"Sector": sec, "Symbol": t.replace(".NS",""), "LTP": round(p, 2), "Chg(₹)": round(chg_v, 2), "Chg(%)": round(chg_p, 2), "Vol_Ratio": round(vr, 2), "Score": v_score, "Signal": sig})
             elif t in INDICES.values():
                 name = [k for k, v in INDICES.items() if v == t][0]
                 i_rows.append({"Name": name, "Price": round(p, 2), "ChgV": round(chg_v, 2), "ChgP": round(chg_p, 2)})
         except: continue
     return pd.DataFrame(s_rows), pd.DataFrame(i_rows)
 
-df_s, df_i = fetch_master_data()
+df_s, df_i = get_data()
 
-# --- 4. NAVIGATION ---
-with st.sidebar:
-    st.markdown("<h2 style='color:#58a6ff'>TERMINAL v7.1</h2>", unsafe_allow_html=True)
-    menu = option_menu(None, ["Dashboard", "Sector Pulse", "Volume Scoreboard", "Watchlist"], 
-                       icons=["speedometer", "pie-chart", "star-fill", "list"], default_index=0)
-    tz = pytz.timezone('Asia/Kolkata')
-    st.info(f"Market Status: {'🟢 LIVE' if (now := datetime.now(tz)).weekday() < 5 and (time(9,15) <= now.time() <= time(15,30)) else '🔴 CLOSED'}")
-
-# --- 5. DASHBOARD ---
-if menu == "Dashboard":
+# --- MODULE 1: DASHBOARD RENDERER ---
+def render_dashboard():
+    # Spacing Control
+    st.markdown("<br>", unsafe_allow_html=True)
     cols = st.columns(len(df_i))
     for i, r in df_i.iterrows():
         with cols[i]:
-            st.markdown(f"**{r['Name']}**")
+            st.markdown(f"<span style='color:#94a3b8; font-size:12px; font-weight:700;'>{r['Name']}</span>", unsafe_allow_html=True)
             st.markdown(f"<div class='price-blink'>₹{r['Price']:,.2f}</div>", unsafe_allow_html=True)
             clr = "#10b981" if r['ChgP'] >= 0 else "#f43f5e"
-            st.markdown(f"<span style='color:{clr}; font-weight:bold;'>{r['ChgV']:+.2f} ({r['ChgP']:+.2f}%)</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:{clr}; font-weight:bold; font-size:18px;'>{r['ChgV']:+.2f} ({r['ChgP']:+.2f}%)</span>", unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("<br><hr style='border-color:rgba(255,255,255,0.1)'><br>", unsafe_allow_html=True)
     
-    st.subheader("🎯 Institutional Conviction (Score > 20 Only)")
+    st.subheader("🎯 Institutional Conviction (Score > 20)")
     c1, c2 = st.columns(2)
     with c1:
-        st.write("🟢 **Strongest Buy Setup** (Vol Score > 20)")
-        # STRICT FILTER: SIGNAL IS BUY AND SCORE > 20
-        bulls = df_s[(df_s['Signal']=="🚀 BUY") & (df_s['Vol_Score'] > 20)].nlargest(3, 'Vol_Score')
-        if not bulls.empty:
-            for _, r in bulls.iterrows():
-                st.markdown(f"<div class='bull-card'><b>{r['Symbol']}</b> | Score: {r['Vol_Score']} | ₹{r['LTP']} | <span style='color:#10b981'>+{r['Change(%)']}%</span></div>", unsafe_allow_html=True)
-        else: st.info("No stocks currently meet Buy Momentum + Vol Score > 20")
-            
-    with c2:
-        st.write("🔴 **Strongest Sell Setup** (Vol Score > 20)")
-        # STRICT FILTER: SIGNAL IS SELL AND SCORE > 20
-        bears = df_s[(df_s['Signal']=="📉 SELL") & (df_s['Vol_Score'] > 20)].nlargest(3, 'Vol_Score')
-        if not bears.empty:
-            for _, r in bears.iterrows():
-                st.markdown(f"<div class='bear-card'><b>{r['Symbol']}</b> | Score: {r['Vol_Score']} | ₹{r['LTP']} | <span style='color:#f43f5e'>{r['Change(%)']}%</span></div>", unsafe_allow_html=True)
-        else: st.info("No stocks currently meet Sell Momentum + Vol Score > 20")
+        st.markdown("<h4 style='color:#10b981'>🟢 Momentum BUY</h4>", unsafe_allow_html=True)
+        bulls = df_s[(df_s['Signal']=="🚀 BUY") & (df_s['Score'] >= 20)].nlargest(3, 'Score')
+        for _, r in bulls.iterrows():
+            st.markdown(f"""<div class='pro-card bull-border'>
+                <span style='font-size:20px; font-weight:700;'>{r['Symbol']}</span> 
+                <span style='float:right; color:#10b981; font-weight:bold;'>{r['Chg(%)']:+.2f}%</span><br>
+                <span style='color:#94a3b8'>LTP: ₹{r['LTP']} | Change: ₹{r['Chg(₹)']} | Score: {r['Score']} pts</span>
+            </div>""", unsafe_allow_html=True)
 
-# --- 6. SECTOR PULSE (FIXED) ---
-elif menu == "Sector Pulse":
-    st.subheader("🏗️ Interactive Sector Heatmap")
+    with c2:
+        st.markdown("<h4 style='color:#f43f5e'>🔴 Momentum SELL</h4>", unsafe_allow_html=True)
+        bears = df_s[(df_s['Signal']=="📉 SELL") & (df_s['Score'] >= 20)].nlargest(3, 'Score')
+        for _, r in bears.iterrows():
+            st.markdown(f"""<div class='pro-card bear-border'>
+                <span style='font-size:20px; font-weight:700;'>{r['Symbol']}</span> 
+                <span style='float:right; color:#f43f5e; font-weight:bold;'>{r['Chg(%)']:+.2f}%</span><br>
+                <span style='color:#94a3b8'>LTP: ₹{r['LTP']} | Change: ₹{r['Chg(₹)']} | Score: {r['Score']} pts</span>
+            </div>""", unsafe_allow_html=True)
+
+# --- MODULE 2: SECTOR PULSE RENDERER ---
+def render_sectors():
+    st.subheader("🏗️ Market Sector Analytics")
+    sec_data = df_s.groupby("Sector")["Chg(%)"].mean().reset_index().sort_values("Chg(%)", ascending=False)
     
-    # Calculate Sector averages
-    sec_data = df_s.groupby("Sector")["Change(%)"].mean().reset_index().sort_values("Change(%)", ascending=False)
-    
-    # Chart
-    fig = px.bar(sec_data, x='Sector', y='Change(%)', color='Change(%)', 
-                 color_continuous_scale=['#f43f5e', '#10b981'], 
-                 color_continuous_midpoint=0, text_auto='.2f')
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color="#8b949e", showlegend=False, height=400, coloraxis_showscale=False)
+    fig = px.bar(sec_data, x='Sector', y='Chg(%)', color='Chg(%)', 
+                 color_continuous_scale=['#f43f5e', '#10b981'], color_continuous_midpoint=0)
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color="#94a3b8", height=400, coloraxis_showscale=False)
     st.plotly_chart(fig, use_container_width=True)
 
-    # Drill down
-    sel_sec = st.selectbox("Select Sector to explore:", sec_data['Sector'].tolist())
-    st.markdown(f"### Stocks in {sel_sec}")
-    st.dataframe(df_s[df_s['Sector']==sel_sec].sort_values("Change(%)", ascending=False).style.format({"LTP": "{:.2f}", "Change(₹)": "{:+.2f}", "Change(%)": "{:+.2f}%"}).applymap(lambda x: 'background-color: rgba(16, 185, 129, 0.2); color: #10b981' if isinstance(x, (int, float)) and x > 0 else 'background-color: rgba(244, 63, 94, 0.2); color: #f43f5e' if isinstance(x, (int, float)) and x < 0 else '', subset=['Change(%)', 'Change(₹)']), use_container_width=True, hide_index=True)
+    sel_sec = st.selectbox("Drill down into Sector:", sec_data['Sector'].tolist())
+    st.dataframe(df_s[df_s['Sector']==sel_sec].sort_values("Chg(%)", ascending=False).style.format({"Chg(%)": "{:+.2f}%", "Chg(₹)": "{:+.2f}"}).applymap(lambda x: 'color: #10b981' if isinstance(x, (int,float)) and x>0 else 'color: #f43f5e' if isinstance(x, (int,float)) and x<0 else '', subset=['Chg(%)', 'Chg(₹)']), use_container_width=True)
 
-# --- 7. VOLUME SCOREBOARD ---
-elif menu == "Volume Scoreboard":
-    st.subheader("📊 Full Volume Intensity Analysis")
-    st.dataframe(df_s.sort_values("Vol_Score", ascending=False), use_container_width=True, hide_index=True, 
-                 column_config={
-                     "Vol_Score": st.column_config.ProgressColumn("Volume Score", min_value=0, max_value=30, format="%d pts"),
-                     "Change(%)": st.column_config.NumberColumn(format="%+.2f%%")
-                 })
+# --- MODULE 3: SCOREBOARD RENDERER ---
+def render_scoreboard():
+    st.subheader("📊 Institutional Volume Scoreboard")
+    st.dataframe(df_s.sort_values("Score", ascending=False), use_container_width=True, hide_index=True,
+                 column_config={"Score": st.column_config.ProgressColumn(min_value=0, max_value=30), "Chg(%)": st.column_config.NumberColumn(format="%+.2f%%")})
 
-elif menu == "Watchlist":
-    st.subheader("📋 Master F&O Monitor")
-    search = st.text_input("🔍 Quick Search Stock...").upper()
+# --- MODULE 4: WATCHLIST RENDERER ---
+def render_watchlist():
+    st.subheader("📋 Master F&O Pulse")
+    search = st.text_input("🔍 Search Stock...").upper()
     disp = df_s[df_s['Symbol'].str.contains(search)] if search else df_s
-    st.dataframe(disp.sort_values("Vol_Score", ascending=False), use_container_width=True, hide_index=True)
+    st.dataframe(disp.sort_values("Chg(%)", ascending=False), use_container_width=True, hide_index=True)
+
+# --- APP ROUTING ---
+with st.sidebar:
+    st.markdown("<h2 style='color:#38bdf8'>QUANT PRO</h2>", unsafe_allow_html=True)
+    menu = option_menu(None, ["Dashboard", "Sector Pulse", "Scoreboard", "Watchlist"], 
+                       icons=["terminal", "activity", "award", "list"], default_index=0)
+    tz = pytz.timezone('Asia/Kolkata')
+    st.markdown(f"<div style='background:#1e293b; padding:10px; border-radius:8px; border:1px solid #334155;'>Time: {datetime.now(tz).strftime('%H:%M:%S')} IST</div>", unsafe_allow_html=True)
+
+if menu == "Dashboard": render_dashboard()
+elif menu == "Sector Pulse": render_sectors()
+elif menu == "Scoreboard": render_scoreboard()
+elif menu == "Watchlist": render_watchlist()

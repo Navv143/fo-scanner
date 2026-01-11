@@ -1,38 +1,53 @@
-/* GLOBAL TERMINAL THEME */
+/* GLOBAL THEME: MIDNIGHT TERMINAL */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 
-.main { background-color: #05070a; color: #e2e8f0; }
+.main {
+    background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
+    color: #f8fafc;
+}
 
-/* PRICE BLINKING EFFECT */
-@keyframes neon-blink {
-    0% { opacity: 1; color: #ffffff; }
-    50% { opacity: 0.5; color: #58a6ff; text-shadow: 0 0 10px #58a6ff; }
-    100% { opacity: 1; color: #ffffff; }
+/* SIDEBAR: NAVY GLASS */
+section[data-testid="stSidebar"] {
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* TERMINAL METRIC CARDS */
+div[data-testid="stMetric"] {
+    background: rgba(30, 41, 59, 0.5) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px !important;
+    padding: 25px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* BLINKING NEON PRICE */
+@keyframes neon-pulse {
+    0% { color: #fff; text-shadow: 0 0 5px #fff; }
+    50% { color: #38bdf8; text-shadow: 0 0 20px #0ea5e9; }
+    100% { color: #fff; text-shadow: 0 0 5px #fff; }
 }
 .price-blink {
-    animation: neon-blink 2s infinite;
+    animation: neon-pulse 2.5s infinite;
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 26px !important;
+    font-size: 32px !important;
 }
 
-/* METRIC CARDS */
-div[data-testid="stMetric"] {
-    background: linear-gradient(145deg, #0d1117, #161b22);
-    border: 1px solid #30363d;
+/* PROFESSIONAL PICK CARDS */
+.pro-card {
+    padding: 1.5rem;
     border-radius: 12px;
-    padding: 20px !important;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 6px solid;
 }
+.bull-border { border-color: #10b981; box-shadow: -10px 0 20px rgba(16, 185, 129, 0.1); }
+.bear-border { border-color: #f43f5e; box-shadow: -10px 0 20px rgba(244, 63, 94, 0.1); }
 
-/* SIDEBAR NAV */
-section[data-testid="stSidebar"] {
-    background-color: #010409 !important;
-    border-right: 1px solid #30363d;
+/* DATA TABLES */
+.stDataFrame {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
 }
-
-/* TABLE HIGHLIGHTS */
-.stDataFrame { border: 1px solid #30363d; border-radius: 8px; }
-
-/* TOP PICK CARDS */
-.bull-card { border-left: 5px solid #10b981; background: rgba(16, 185, 129, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 8px; }
-.bear-card { border-left: 5px solid #f43f5e; background: rgba(244, 63, 94, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 8px; }
