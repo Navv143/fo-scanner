@@ -6,58 +6,39 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from streamlit_option_menu import option_menu
 
-# --- 1. PROFESSIONAL UI CSS ---
-st.set_page_config(page_title="PRO-QUANT ELITE", layout="wide", initial_sidebar_state="expanded")
+# --- 1. PREMIUM TERMINAL UI ---
+st.set_page_config(page_title="PRO-QUANT TERMINAL", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    /* Global Background & Font */
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
     .main { background-color: #0b0e14; color: #e2e8f0; }
-    
-    /* Sidebar Styling */
     section[data-testid="stSidebar"] { background-color: #010409 !important; border-right: 1px solid #30363d; }
     
-    /* Professional Metric Cards */
+    /* Big Metric Cards */
     div[data-testid="stMetric"] {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 12px;
-        padding: 20px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px !important;
     }
-    div[data-testid="stMetricLabel"] > div { color: #8b949e !important; font-size: 14px !important; font-weight: 600 !important; }
-    div[data-testid="stMetricValue"] > div { color: #ffffff !important; font-size: 28px !important; font-family: 'JetBrains Mono', monospace !important; }
+    div[data-testid="stMetricLabel"] > div { color: #8b949e !important; font-size: 14px !important; }
+    div[data-testid="stMetricValue"] > div { color: #ffffff !important; font-size: 24px !important; font-family: 'JetBrains Mono', monospace !important; }
     
-    /* High Visibility Delta Colors */
-    [data-testid="stMetricDelta"] > div { font-weight: 800 !important; font-size: 18px !important; }
-    [data-testid="stMetricDelta"] svg { width: 20px; height: 20px; }
-
-    /* Custom Status Pill */
-    .status-pill {
-        padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px;
-        display: inline-block; margin-bottom: 20px; border: 1px solid;
+    /* Scanner Alert Box */
+    .scanner-box {
+        background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+        border-left: 5px solid #3b82f6; padding: 15px; border-radius: 8px; margin-bottom: 20px;
     }
     
-    /* Standard Table Styling */
-    .stDataFrame { border: 1px solid #30363d; border-radius: 8px; background-color: #0d1117; }
-    
-    /* Titles */
-    h1, h2, h3 { color: #58a6ff !important; font-weight: 700 !important; }
+    /* Table Styling */
+    .stDataFrame { border: 1px solid #30363d; border-radius: 8px; }
+    h1, h2, h3 { color: #58a6ff !important; }
     </style>
     """, unsafe_allow_html=True)
 
-st_autorefresh(interval=5 * 60 * 1000, key="global_sync")
+st_autorefresh(interval=3 * 60 * 1000, key="m_sync")
 
-# --- 2. DATA TICKERS (VERIFIED) ---
+# --- 2. VERIFIED TICKERS ---
 INDICES = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "INDIA VIX": "^INDIAVIX"}
-
-# Specific Sectoral Index Tickers for Yahoo Finance
-SECTORS = {
-    "IT": "^CNXIT", "AUTO": "^CNXAUTO", "PHARMA": "^CNXPHARMA", 
-    "METAL": "^CNXMETAL", "REALTY": "^CNXREALTY", "FMCG": "^CNXFMCG", 
-    "ENERGY": "^CNXENERGY", "FINANCE": "^CNXFIN"
-}
+SECTORS = {"IT": "^CNXIT", "AUTO": "^CNXAUTO", "PHARMA": "^CNXPHARMA", "METAL": "^CNXMETAL", "REALTY": "^CNXREALTY", "FMCG": "^CNXFMCG", "FINANCE": "^CNXFIN"}
 
 FO_STOCKS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "SBIN.NS", "BHARTIARTL.NS", "AXISBANK.NS", 
@@ -65,14 +46,14 @@ FO_STOCKS = [
     "ACC.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "AUROPHARMA.NS", "BEL.NS", "BPCL.NS", "CIPLA.NS", "COALINDIA.NS", 
     "DLF.NS", "DRREDDY.NS", "GAIL.NS", "HCLTECH.NS", "HINDALCO.NS", "HINDUNILVR.NS", "ITC.NS", "JINDALSTEL.NS", 
     "JSWSTEEL.NS", "KOTAKBANK.NS", "M&M.NS", "NTPC.NS", "ONGC.NS", "POWERGRID.NS", "SUNPHARMA.NS", "TITAN.NS", 
-    "ULTRACEMCO.NS", "WIPRO.NS"
+    "ULTRACEMCO.NS", "WIPRO.NS", "COFORGE.NS", "DIXON.NS", "HAL.NS", "TRENT.NS", "POLYCAB.NS"
 ]
 
 # --- 3. DATA ENGINE ---
-@st.cache_data(ttl=300)
-def fetch_data():
+@st.cache_data(ttl=180)
+def fetch_terminal_data():
     all_tickers = FO_STOCKS + list(INDICES.values()) + list(SECTORS.values())
-    raw = yf.download(all_tickers, period="7d", interval="1d", group_by='ticker', progress=False)
+    raw = yf.download(all_tickers, period="5d", interval="1d", group_by='ticker', progress=False)
     
     s_rows, i_rows, sec_rows = [], [], []
 
@@ -85,10 +66,17 @@ def fetch_data():
             chg_pct = ((p - prev_p) / prev_p) * 100
             
             if t in FO_STOCKS:
+                vol_r = curr['Volume'] / prev['Volume'] if prev['Volume'] > 0 else 0
+                # MOMENTUM SCANNER LOGIC:
+                # 1. Price > Prev Day High (BUY) OR Price < Prev Day Low (SELL)
+                # 2. Volume Surge (Relative to yesterday)
+                pdh, pdl = prev['High'], prev['Low']
+                signal = "🚀 BULLISH BREAKOUT" if p > pdh else "📉 BEARISH BREAKDOWN" if p < pdl else "Neutral"
+                
                 s_rows.append({
                     "Symbol": t.replace(".NS",""), "Price": round(p, 2), 
-                    "Change%": round(chg_pct, 2), "Volume": int(curr['Volume']),
-                    "Signal": "🚀 BUY" if p > prev['High'] else "📉 SELL" if p < prev['Low'] else "Neutral"
+                    "Change%": round(chg_pct, 2), "Vol_Ratio": round(vol_r, 2),
+                    "Signal": signal, "PDH": round(pdh, 2), "PDL": round(pdl, 2)
                 })
             elif t in INDICES.values():
                 name = [k for k, v in INDICES.items() if v == t][0]
@@ -100,59 +88,63 @@ def fetch_data():
         
     return pd.DataFrame(s_rows), pd.DataFrame(i_rows), pd.DataFrame(sec_rows)
 
-# --- 4. NAVIGATION ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.markdown("### 🏛️ **QUANT TERMINAL**")
-    menu = option_menu(None, ["Dashboard", "F&O Watchlist", "Sector Pulse"], 
-                       icons=["grid", "list-check", "bar-chart-fill"], 
+    menu = option_menu(None, ["Momentum Scanner", "Sector Analytics", "Full Watchlist"], 
+                       icons=["lightning-fill", "pie-chart-fill", "list-task"], 
                        menu_icon="cast", default_index=0,
                        styles={"nav-link-selected": {"background-color": "#238636"}})
     
     tz = pytz.timezone('Asia/Kolkata')
     now = datetime.now(tz)
-    is_live = now.weekday() < 5 and (time(9,15) <= now.time() <= time(15,30))
-    st.markdown(f'<div class="status-pill" style="background: {"#002b1b" if is_live else "#2b0000"}; color: {"#00ffcc" if is_live else "#ff4b4b"}; border-color: {"#00ffcc" if is_live else "#ff4b4b"};">{"🟢 MARKET LIVE" if is_live else "🔴 MARKET CLOSED"}</div>', unsafe_allow_html=True)
-    st.caption(f"Last Sync: {now.strftime('%H:%M:%S')} IST")
+    st.info(f"Market Status: {'🟢 LIVE' if now.weekday() < 5 and (time(9,15) <= now.time() <= time(15,30)) else '🔴 CLOSED'}")
+    st.caption(f"Refresh: {now.strftime('%H:%M:%S')} IST")
 
 # --- 5. PAGE CONTENT ---
-df_s, df_i, df_sec = fetch_data()
+df_s, df_i, df_sec = fetch_terminal_data()
 
-if menu == "Dashboard":
-    st.subheader("Market Snapshot")
-    if not df_i.empty:
-        c1, c2, c3 = st.columns(3)
-        nifty = df_i[df_i['Name'] == "NIFTY 50"].iloc[0]
-        c1.metric("NIFTY 50", f"₹{nifty['Price']:,.2f}", f"{nifty['Change%']}%")
+# Global Header: Quick Indices
+if not df_i.empty:
+    idx_cols = st.columns(len(df_i))
+    for i, row in df_i.iterrows():
+        # VIX inverse logic
+        d_mode = "inverse" if "VIX" in row['Name'] else "normal"
+        idx_cols[i].metric(row['Name'], f"₹{row['Price']:,.2f}", f"{row['Change%']}%", delta_color=d_mode)
+st.markdown("---")
+
+if menu == "Momentum Scanner":
+    st.markdown('<div class="scanner-box"><h3>🚀 Live Momentum Radar</h3><p>Scanning for Stocks breaking Previous Day High/Low with Volume Surge.</p></div>', unsafe_allow_html=True)
+    
+    # User Control for Volume Surge
+    vol_min = st.slider("Minimum Volume Ratio (Today vs Yesterday)", 0.3, 3.0, 1.0, help="1.0 means stock has already done yesterday's full volume.")
+    
+    if not df_s.empty:
+        # Filter only stocks with Signal and Vol Ratio > User Input
+        radar_df = df_s[(df_s['Signal'] != "Neutral") & (df_s['Vol_Ratio'] >= vol_min)].sort_values("Vol_Ratio", ascending=False)
         
-        banknifty = df_i[df_i['Name'] == "BANK NIFTY"].iloc[0]
-        c2.metric("BANK NIFTY", f"₹{banknifty['Price']:,.2f}", f"{banknifty['Change%']}%")
-        
-        vix = df_i[df_i['Name'] == "INDIA VIX"].iloc[0]
-        c3.metric("INDIA VIX", f"{vix['Price']}", f"{vix['Change%']}%", delta_color="inverse")
+        if not radar_df.empty:
+            st.dataframe(radar_df[["Symbol", "Price", "Change%", "Vol_Ratio", "Signal", "PDH", "PDL"]], 
+                         use_container_width=True, hide_index=True,
+                         column_config={
+                             "Change%": st.column_config.NumberColumn(format="%+.2f%%"),
+                             "Vol_Ratio": st.column_config.ProgressColumn(min_value=0, max_value=3, format="%.2fx")
+                         })
+        else:
+            st.warning(f"No stocks currently breaking PDH/PDL with > {vol_min}x volume. Try lowering the Volume Ratio slider.")
+            st.info("💡 Pro Tip: During the first 15 mins of market (9:15-9:30), set the Vol Ratio to 0.3 to find early movers.")
+    else:
+        st.error("Data Engine offline. Please refresh.")
 
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("🔥 **Top Gainers**")
-        st.dataframe(df_s.nlargest(5, 'Change%')[['Symbol', 'Price', 'Change%']], use_container_width=True, hide_index=True)
-    with col2:
-        st.write("📉 **Top Losers**")
-        st.dataframe(df_s.nsmallest(5, 'Change%')[['Symbol', 'Price', 'Change%']], use_container_width=True, hide_index=True)
-
-elif menu == "F&O Watchlist":
-    st.subheader("Live F&O Momentum")
-    search = st.text_input("🔍 Search stock symbol...")
-    filtered = df_s[df_s['Symbol'].str.contains(search.upper())] if search else df_s
-    st.dataframe(filtered.sort_values("Change%", ascending=False), use_container_width=True, hide_index=True,
-                 column_config={"Change%": st.column_config.NumberColumn(format="%+.2f%%")})
-
-elif menu == "Sector Pulse":
-    st.subheader("Sector Performance Heatmap")
+elif menu == "Sector Analytics":
+    st.subheader("🏗️ Sector Performance Heatmap")
     if not df_sec.empty:
         df_sec = df_sec.sort_values("Change%", ascending=False)
-        # Higher Contrast Bar Chart
         st.bar_chart(df_sec.set_index("Sector")["Change%"], color="#238636")
-        st.dataframe(df_sec, use_container_width=True, hide_index=True,
-                     column_config={"Change%": st.column_config.NumberColumn(format="%+.2f%%")})
-    else:
-        st.warning("Awaiting Sectoral Data...")
+        st.dataframe(df_sec, use_container_width=True, hide_index=True)
+
+elif menu == "Full Watchlist":
+    st.subheader("📋 Master Watchlist (All F&O)")
+    search = st.text_input("🔍 Quick Search Stock...")
+    disp = df_s[df_s['Symbol'].str.contains(search.upper())] if search else df_s
+    st.dataframe(disp.sort_values("Change%", ascending=False), use_container_width=True, hide_index=True)
