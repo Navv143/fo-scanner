@@ -8,21 +8,21 @@ from streamlit_autorefresh import st_autorefresh
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Pro-Trade F&O Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# Professional Custom CSS for Dark Mode & Better UI
+# Fixed the typo here: changed unsafe_base_html to unsafe_allow_html
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
-    div[data-testid="stMetricValue"] { font-size: 22px; color: #00ffcc; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; color: #00ffcc; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] {
-        height: 40px; white-space: pre-wrap; background-color: #1e2129;
+        height: 45px; background-color: #1e2129;
         border-radius: 5px; color: white; padding: 10px;
     }
     .stTabs [aria-selected="true"] { background-color: #00ffcc !important; color: black !important; }
     </style>
-    """, unsafe_base_html=True)
+    """, unsafe_allow_html=True)
 
-# 180 Second Auto-Refresh (3 Minutes)
+# 3-Minute Auto-Refresh
 st_autorefresh(interval=3 * 60 * 1000, key="fnotracker")
 
 # --- DATA LISTS ---
@@ -38,32 +38,38 @@ def get_index_data():
     for name, sym in INDICES.items():
         try:
             ticker = yf.Ticker(sym)
-            hist = ticker.history(period="2d")
+            hist = ticker.history(period="3d") # Increased period for weekend/holiday safety
+            if len(hist) < 2: continue
             price = hist['Close'].iloc[-1]
-            change = price - hist['Close'].iloc[-2]
-            p_change = (change / hist['Close'].iloc[-2]) * 100
-            data[name] = {"price": round(price, 2), "change": round(p_change, 2)}
-        except: data[name] = {"price": 0, "change": 0}
+            prev_price = hist['Close'].iloc[-2]
+            change = ((price - prev_price) / prev_price) * 100
+            data[name] = {"price": round(price, 2), "change": round(change, 2)}
+        except: pass
     return data
 
 def scan_logic(symbol, vol_trigger):
     try:
-        df = yf.download(symbol, period="2d", interval="15m", progress=False)
-        if len(df) < 5: return None
+        df = yf.download(symbol, period="5d", interval="15m", progress=False)
+        if df.empty or len(df) < 10: return None
         
-        # Split Data
-        dates = df.index.date
-        unique_dates = sorted(list(set(dates)))
-        yest = df[dates == unique_dates[-2]]
-        today = df[dates == unique_dates[-1]]
+        unique_dates = sorted(list(set(df.index.date)))
+        if len(unique_dates) < 2: return None
+        
+        yest_date = unique_dates[-2]
+        today_date = unique_dates[-1]
+        
+        yest = df[df.index.date == yest_date]
+        today = df[df.index.date == today_date]
 
-        # Stats
+        if today.empty: return None
+
         pdh, pdl = yest['High'].max(), yest['Low'].min()
         yest_vol = yest['Volume'].sum()
         curr_price = today['Close'].iloc[-1]
         today_vol = today['Volume'].sum()
-        vwap = (today['Close'] * today['Volume']).sum() / today['Volume'].sum()
         
+        # VWAP Approximation
+        vwap = (today['Close'] * today['Volume']).sum() / today['Volume'].sum()
         vol_ratio = today_vol / yest_vol
         day_change = ((curr_price - yest['Close'].iloc[-1]) / yest['Close'].iloc[-1]) * 100
 
@@ -75,7 +81,7 @@ def scan_logic(symbol, vol_trigger):
             "Signal": "Neutral"
         }
 
-        # Momentum Filter
+        # Momentum Filter Logic
         if curr_price > pdh and vol_ratio > vol_trigger and curr_price > vwap:
             res["Signal"] = "🚀 BUY"
         elif curr_price < pdl and vol_ratio > vol_trigger and curr_price < vwap:
@@ -86,57 +92,60 @@ def scan_logic(symbol, vol_trigger):
 
 # --- APP LAYOUT ---
 st.title("🛡️ Pro-Trader F&O Intelligence")
-st.caption(f"Real-time Pulse • Last Update: {datetime.now().strftime('%H:%M:%S')}")
+st.caption(f"Real-time Dashboard • Last Update: {datetime.now().strftime('%H:%M:%S')}")
 
-# Top Bar: Index Tickers
+# Top Bar Index Metrics
 idx_data = get_index_data()
-cols = st.columns(len(idx_data))
-for i, (name, val) in enumerate(idx_data.items()):
-    color = "normal" if val['change'] >= 0 else "inverse"
-    cols[i].metric(name, f"₹{val['price']}", f"{val['change']}%", delta_color=color)
+if idx_data:
+    cols = st.columns(len(idx_data))
+    for i, (name, val) in enumerate(idx_data.items()):
+        cols[i].metric(name, f"₹{val['price']}", f"{val['change']}%")
 
 st.divider()
 
-# Sidebar Settings
-st.sidebar.header("Scanner Settings")
-vol_threshold = st.sidebar.slider("Volume Sensitivity %", 5, 50, 25)
-st.sidebar.write("---")
-st.sidebar.write("🟢 **Buy Criteria:** Price > PDH + High Volume + Above VWAP")
-st.sidebar.write("🔴 **Sell Criteria:** Price < PDL + High Volume + Below VWAP")
+# Sidebar
+st.sidebar.header("Control Panel")
+vol_threshold = st.sidebar.slider("Volume Threshold %", 5, 50, 25)
+st.sidebar.markdown("""
+---
+**Scan Criteria:**
+- **BUY:** Price > Prev Day High & Vol > Threshold & Above VWAP
+- **SELL:** Price < Prev Day Low & Vol > Threshold & Below VWAP
+""")
 
-# Main Dashboard Tabs
-tab1, tab2 = st.tabs(["🔥 Momentum Picks", "📋 All F&O Stocks"])
+tab1, tab2 = st.tabs(["🔥 Momentum Alerts", "📋 Full F&O Watchlist"])
 
-with st.spinner("Analyzing Market Flow..."):
-    # Run scanning in parallel threads for speed
+with st.spinner("Fetching market data..."):
     all_data = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+    # Multithreading for speed
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
         futures = [executor.submit(scan_logic, s, vol_threshold/100) for s in FO_STOCKS]
         for f in concurrent.futures.as_completed(futures):
             r = f.result()
             if r: all_data.append(r)
 
-    df_master = pd.DataFrame(all_data)
+    df_master = pd.DataFrame(all_data) if all_data else pd.DataFrame()
 
 with tab1:
-    st.subheader(f"Institutional Momentum (> {vol_threshold}% Volume Surge)")
-    momentum_df = df_master[df_master['Signal'] != "Neutral"]
-    if not momentum_df.empty:
-        # Styled Table for Alerts
-        st.dataframe(momentum_df.sort_values(by="Vol Ratio", ascending=False), 
-                     use_container_width=True, hide_index=True)
+    if not df_master.empty:
+        alerts = df_master[df_master['Signal'] != "Neutral"]
+        if not alerts.empty:
+            st.dataframe(alerts.sort_values(by="Vol Ratio", ascending=False), use_container_width=True, hide_index=True)
+        else:
+            st.info("No momentum breakouts detected yet. Best monitored between 9:45 AM - 11:00 AM.")
     else:
-        st.info(f"Scanning {len(FO_STOCKS)} stocks... No breakouts confirmed yet. Best trades usually appear after 9:45 AM.")
+        st.warning("Awaiting market open for fresh data.")
 
 with tab2:
-    st.subheader("Live F&O Price List")
-    search = st.text_input("Search Stock (e.g. RELIANCE, HDFC)")
-    display_df = df_master.copy()
-    if search:
-        display_df = display_df[display_df['Symbol'].str.contains(search.upper())]
-    
-    st.dataframe(display_df[['Symbol', 'LTP', 'Chg %', 'Vol Ratio']].sort_values(by="Chg %", ascending=False), 
-                 use_container_width=True, hide_index=True)
+    if not df_master.empty:
+        search = st.text_input("Quick Find Stock", placeholder="Type stock name...")
+        disp_df = df_master.copy()
+        if search:
+            disp_df = disp_df[disp_df['Symbol'].str.contains(search.upper())]
+        
+        st.dataframe(disp_df[['Symbol', 'LTP', 'Chg %', 'Vol Ratio']].sort_values(by="Chg %", ascending=False), use_container_width=True, hide_index=True)
+    else:
+        st.info("Watchlist will populate when market is active.")
 
 st.markdown("---")
-st.caption("Data source: Yahoo Finance. Accuracy depends on feed delay (1-2 mins). Build for educational trading analysis.")
+st.caption("Powered by Yahoo Finance Free Feed. Note: Intraday data may have a 1-2 min delay.")
