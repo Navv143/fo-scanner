@@ -1,0 +1,44 @@
+/* Premium Terminal Theme */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+.main {
+    background-color: #05070a;
+}
+
+/* Blinking Price Animation */
+@keyframes blink-glow {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; text-shadow: 0 0 10px #58a6ff; }
+    100% { opacity: 1; }
+}
+
+.price-blink {
+    animation: blink-glow 2s infinite;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* Metric Cards */
+div[data-testid="stMetric"] {
+    background: linear-gradient(145deg, #0d1117, #161b22);
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 20px !important;
+    transition: transform 0.3s;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-5px);
+    border-color: #58a6ff;
+}
+
+/* Positive/Negative Rows */
+.pos-bg { background-color: rgba(16, 185, 129, 0.15) !important; color: #10b981 !important; padding: 5px; border-radius: 4px; font-weight: bold; }
+.neg-bg { background-color: rgba(244, 63, 94, 0.15) !important; color: #f43f5e !important; padding: 5px; border-radius: 4px; font-weight: bold; }
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #010409 !important;
+    border-right: 1px solid #30363d;
+}
