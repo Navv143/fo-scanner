@@ -5,20 +5,9 @@
     color: #f8fafc !important;
 }
 
-html, body {
-    background-color: #05070a !important;
-}
+html, body { background-color: #05070a !important; }
 
-/* Glassmorphism Metric Cards */
-div[data-testid="stMetric"] {
-    background: rgba(30, 41, 59, 0.4) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 12px !important;
-    padding: 15px !important;
-}
-
-/* Neon Price Animation */
+/* Blinking Price Pulse */
 @keyframes neon-pulse {
     0% { color: #fff; text-shadow: 0 0 5px #fff; }
     50% { color: #38bdf8; text-shadow: 0 0 15px #0ea5e9; }
@@ -31,7 +20,16 @@ div[data-testid="stMetric"] {
     font-size: 24px !important;
 }
 
-/* Professional Pick Cards */
+/* Glassmorphism Cards */
+div[data-testid="stMetric"] {
+    background: rgba(30, 41, 59, 0.4) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+}
+
+/* Momentum Pick Cards */
 .pro-card {
     padding: 1.2rem;
     border-radius: 12px;
@@ -40,10 +38,8 @@ div[data-testid="stMetric"] {
     border-left: 6px solid;
     border-top: 1px solid rgba(255,255,255,0.05);
 }
-.bull-border { border-color: #10b981; box-shadow: -8px 0 15px rgba(16, 185, 129, 0.08); }
-.bear-border { border-color: #f43f5e; box-shadow: -8px 0 15px rgba(244, 63, 94, 0.08); }
+.bull-border { border-color: #10b981; box-shadow: -8px 0 15px rgba(16, 185, 129, 0.1); }
+.bear-border { border-color: #f43f5e; box-shadow: -8px 0 15px rgba(244, 63, 94, 0.1); }
 
 /* Table Cleanup */
-.stDataFrame div, .stDataFrame span, .stDataFrame p {
-    color: #e2e8f0 !important;
-}
+.stDataFrame div, .stDataFrame span, .stDataFrame p { color: #e2e8f0 !important; }
