@@ -1,43 +1,36 @@
 /* GLOBAL THEME */
 [data-testid="stAppViewContainer"] {
-    background-color: #05070a !important;
-    padding: 5px !important;
-}
-
-/* FORCE VERTICAL STACKING FOR MOBILE */
-div[data-testid="stMetric"] {
-    background: #161b22 !important;
-    border: 1px solid #30363d !important;
-    border-radius: 12px !important;
-    padding: 15px !important;
-    min-width: 100% !important;
-    margin-bottom: 10px !important;
-}
-
-/* CUSTOM TRADING CARDS */
-.trade-card {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 12px;
-}
-
-.symbol-name { font-size: 18px; font-weight: 700; color: #58a6ff; }
-.ltp-price { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: #ffffff; }
-.badge { 
-    font-size: 10px; padding: 3px 8px; border-radius: 4px; 
-    background: #21262d; color: #8b949e; margin-right: 5px; 
-    text-transform: uppercase; font-weight: bold;
+    background: radial-gradient(circle at top right, #1e293b, #05070a) !important;
+    color: #e2e8f0 !important;
 }
 
 /* BLINKING PRICE PULSE */
 @keyframes neon-pulse {
     0% { color: #fff; } 50% { color: #38bdf8; text-shadow: 0 0 10px #0ea5e9; } 100% { color: #fff; }
 }
-.price-blink { animation: neon-pulse 3s infinite; }
+.price-blink { animation: neon-pulse 3s infinite; font-family: 'JetBrains Mono', monospace; font-size: 24px !important; font-weight: 700; }
 
-/* HIDE SIDEBAR ON MOBILE FOR SPACE */
-@media (max-width: 600px) {
-    [data-testid="stSidebar"] { display: none; }
+/* METRIC CARDS */
+div[data-testid="stMetric"] {
+    background: rgba(30, 41, 59, 0.4) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
 }
+
+/* MOBILE TRADE CARDS */
+.mobile-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-left: 6px solid #3b82f6;
+}
+
+.symbol-name { font-size: 18px; font-weight: 700; color: #58a6ff; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #21262d; color: #8b949e; margin-right: 5px; }
+
+/* FIXING SPACE ISSUES */
+.block-container { padding-top: 2rem !important; }
