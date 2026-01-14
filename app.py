@@ -8,8 +8,42 @@ import pytz
 from streamlit_autorefresh import st_autorefresh
 from streamlit_option_menu import option_menu
 
-# --- MODULE 0: CORE SETTINGS ---
-st.set_page_config(page_title="PRO-QUANT MASTER v17", layout="wide", initial_sidebar_state="expanded")
+# --- MODULE 0: SECURITY & AUTH ---
+# Professional Credentials (Change these for your security)
+ADMIN_USER = "navv"
+ADMIN_PASS = "navv143"
+
+def check_password():
+    """Returns True if the user had the correct password."""
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if st.session_state["authenticated"]:
+        return True
+
+    # Login UI
+    st.markdown("<div style='text-align:center; padding:50px;'><h1 style='color:#00d4ff'>QUANT PRO TERMINAL</h1><p style='color:#8b949e'>Secure Quant Access Required</p></div>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        with st.form("Login"):
+            u = st.text_input("Username")
+            p = st.text_input("Password", type="password")
+            submit = st.form_submit_button("UNLOCK TERMINAL")
+            if submit:
+                if u == ADMIN_USER and p == ADMIN_PASS:
+                    st.session_state["authenticated"] = True
+                    st.rerun()
+                else:
+                    st.error("Invalid Credentials")
+    return False
+
+# Stop execution if not authenticated
+if not check_password():
+    st.stop()
+
+# --- MODULE 1: CORE SETTINGS (LOCKED) ---
+st.set_page_config(page_title="PRO-QUANT MASTER v18", layout="wide", initial_sidebar_state="expanded")
 
 def load_ui():
     try:
@@ -18,7 +52,7 @@ def load_ui():
     except: pass
 
 load_ui()
-st_autorefresh(interval=3 * 60 * 1000, key="global_refresh")
+st_autorefresh(interval=3 * 60 * 1000, key="pro_sync")
 
 # --- 212+ FULL F&O STOCK DATABASE (LOCKED) ---
 SECTOR_MAP = {
@@ -37,13 +71,19 @@ SECTOR_MAP = {
 ALL_STOCKS = [s for sub in SECTOR_MAP.values() for s in sub]
 INDICES = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "FIN NIFTY": "NIFTY_FIN_SERVICE.NS", "SENSEX": "^BSESN", "MIDCAP": "NIFTY_MID_SELECT.NS", "INDIA VIX": "^INDIAVIX"}
 
-# --- DATA ENGINE (DIAMOND 150-PT) ---
+# --- MODULE 2: ADMIN STATE ---
+# Allows Admin to change sensitivity on the fly
+if "vol_sens" not in st.session_state: st.session_state.vol_sens = 1.2
+if "score_threshold" not in st.session_state: st.session_state.score_threshold = 80
+
+# --- MODULE 3: ENGINES (LOCKED) ---
 @st.cache_data(ttl=120)
 def fetch_master_data():
     all_tkr = list(set(ALL_STOCKS + list(INDICES.values())))
     raw = yf.download(all_tkr, period="15d", interval="1d", group_by='ticker', progress=False)
     s_rows, i_rows, sector_perf = [], [], {}
     
+    # Sector Calc
     for sec, stocks in SECTOR_MAP.items():
         changes = []
         for s in stocks:
@@ -65,6 +105,7 @@ def fetch_master_data():
                 obv_t = "UP" if obv.iloc[-1] > obv.iloc[-2] else "DOWN"
                 adr = ((df['High'] - df['Low']) / df['Low'] * 100).tail(5).mean()
                 sec = next((k for k, v in SECTOR_MAP.items() if t in v), "Others")
+                # Diamond Score logic
                 score = 0
                 is_bull, is_bear = p > prev['High'], p < prev['Low']
                 if is_bull or is_bear: score += 30
@@ -82,94 +123,74 @@ def fetch_master_data():
 
 df_s, df_i, sector_data = fetch_master_data()
 
-# --- MODULE: SMART HOURLY BOX STRATEGY ---
 def get_hourly_box_signal(ticker):
     try:
-        # Fetch 5-minute data for the current session
         df = yf.download(ticker, period="5d", interval="5m", progress=False)
-        if df.empty or len(df) < 15: 
-            return "DATA PENDING", 0, 0, "WAIT"
-        
-        # Resample to get the High/Low of the last completed 1-hour candle
+        if df.empty or len(df) < 15: return "PENDING", 0, 0, "WAIT"
         df_hourly = df.resample('1H').agg({'High': 'max', 'Low': 'min', 'Close': 'last'})
-        if len(df_hourly) < 2: return "SCANNING...", 0, 0, "INITIALIZING"
-        
-        latest_box = df_hourly.iloc[-2] # Last completed hour
-        box_high, box_low = latest_box['High'], latest_box['Low']
+        latest_box = df_hourly.iloc[-2]
         current_price = df['Close'].iloc[-1]
-        
-        if current_price > box_high:
-            return "🚀 BUY CALL", box_high, box_low, "HOURLY BREAKOUT (UP)"
-        elif current_price < box_low:
-            return "📉 BUY PUT", box_high, box_low, "HOURLY BREAKDOWN (DOWN)"
-        else:
-            return "⏸️ NO TRADE", box_high, box_low, "INSIDE BOX"
-    except:
-        return "ERROR", 0, 0, "API LIMIT"
+        if current_price > latest_box['High']: return "🚀 BUY CALL", latest_box['High'], latest_box['Low'], "HOURLY BREAKOUT"
+        if current_price < latest_box['Low']: return "📉 BUY PUT", latest_box['High'], latest_box['Low'], "HOURLY BREAKDOWN"
+        return "⏸️ NO TRADE", latest_box['High'], latest_box['Low'], "INSIDE BOX"
+    except: return "ERROR", 0, 0, "API"
 
-# --- NAVIGATION ---
+# --- MODULE 4: NAVIGATION ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#00d4ff'>QUANT ELITE v17</h2>", unsafe_allow_html=True)
-    menu = option_menu(None, ["Terminal", "Index Pro Strategy", "Impulse Radar", "Sector Heatmap", "Master List"], 
-                       icons=["speedometer", "cpu", "lightning", "grid", "list"], default_index=0)
-    st.info(f"Sync: {datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%H:%M:%S')} IST")
+    st.markdown("<h2 style='color:#00d4ff'>QUANT PRO v18</h2>", unsafe_allow_html=True)
+    menu = option_menu(None, ["Terminal", "Index Pro Strategy", "Sector Radar", "Admin Control"], 
+                       icons=["speedometer", "cpu", "pie-chart", "shield-lock"], default_index=0)
+    if st.button("LOGOUT"):
+        st.session_state["authenticated"] = False
+        st.rerun()
 
-# --- DASHBOARD HEADER ---
-if not df_i.empty:
-    idx_list = ["NIFTY 50", "BANK NIFTY", "FIN NIFTY", "SENSEX", "MIDCAP", "INDIA VIX"]
-    for row_start in range(0, 6, 3):
-        cols = st.columns(3)
-        for j in range(3):
-            name = idx_list[row_start + j]
-            match = df_i[df_i['Name'] == name]
-            with cols[j]:
+# --- MODULE 5: PAGES ---
+if menu == "Terminal":
+    # Index Header
+    if not df_i.empty:
+        idx_order = ["NIFTY 50", "BANK NIFTY", "FIN NIFTY", "SENSEX", "MIDCAP", "INDIA VIX"]
+        for row_start in range(0, 6, 3):
+            cols = st.columns(3)
+            for j in range(3):
+                name = idx_order[row_start+j]
+                match = df_i[df_i['Name'] == name]
                 if not match.empty:
                     r = match.iloc[0]
-                    st.markdown(f"<span style='color:#8b949e; font-size:11px; font-weight:700;'>{r['Name']}</span>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='price-blink'>₹{r['Price']:,.2f}</div>", unsafe_allow_html=True)
-                    clr = ("#ff3366" if r['ChgP'] >= 0 else "#00ff88") if "VIX" in name else ("#00ff88" if r['ChgP'] >= 0 else "#ff3366")
-                    st.markdown(f"<span style='color:{clr}; font-weight:bold;'>{r['ChgP']:+.2f}%</span>", unsafe_allow_html=True)
-
-st.divider()
-
-# --- PAGE ROUTING ---
-if menu == "Terminal":
-    st.subheader("💎 High Conviction Impulse (Score > 80)")
+                    with cols[j]:
+                        st.markdown(f"<span style='color:#8b949e; font-size:11px; font-weight:700;'>{r['Name']}</span>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='price-blink'>₹{r['Price']:,.2f}</div>", unsafe_allow_html=True)
+                        clr = ("#ff3366" if r['ChgP'] >= 0 else "#00ff88") if "VIX" in name else ("#00ff88" if r['ChgP'] >= 0 else "#ff3366")
+                        st.markdown(f"<span style='color:{clr}; font-weight:bold;'>{r['ChgP']:+.2f}%</span>", unsafe_allow_html=True)
+    st.divider()
+    # High Conviction Picks using Admin threshold
+    st.subheader(f"🎯 Conviction Picks (Score > {st.session_state.score_threshold})")
     c1, c2 = st.columns(2)
     if not df_s.empty:
         with c1:
-            for _, r in df_s[(df_s['Signal']=="🚀 BULLISH") & (df_s['Score'] >= 80)].nlargest(3, 'Score').iterrows():
+            for _, r in df_s[(df_s['Signal']=="🚀 BULLISH") & (df_s['Score'] >= st.session_state.score_threshold)].nlargest(3, 'Score').iterrows():
                 st.markdown(f"<div class='mobile-card' style='border-color:#00ff88'><b>{r['Symbol']}</b> | Score: {r['Score']} | <span style='color:#00ff88'>{r['Chg%']:+.2f}%</span></div>", unsafe_allow_html=True)
         with c2:
-            for _, r in df_s[(df_s['Signal']=="📉 BEARISH") & (df_s['Score'] >= 80)].nlargest(3, 'Score').iterrows():
+            for _, r in df_s[(df_s['Signal']=="📉 BEARISH") & (df_s['Score'] >= st.session_state.score_threshold)].nlargest(3, 'Score').iterrows():
                 st.markdown(f"<div class='mobile-card' style='border-color:#ff3366'><b>{r['Symbol']}</b> | Score: {r['Score']} | <span style='color:#ff3366'>{r['Chg%']:+.2f}%</span></div>", unsafe_allow_html=True)
 
 elif menu == "Index Pro Strategy":
-    st.subheader("🤖 Smart Box Strategy (1-Hour Breakout)")
-    st.info("Strategy: Buying happens when price breaks the High/Low of the last completed 1-hour candle.")
+    st.subheader("🤖 Smart Hourly Box Breakout")
     targets = {"NIFTY 50": "^NSEI", "BANK NIFTY": "^NSEBANK", "FIN NIFTY": "NIFTY_FIN_SERVICE.NS"}
     for name, tkr in targets.items():
         signal, high, low, reason = get_hourly_box_signal(tkr)
         clr = "#00ff88" if "CALL" in signal else "#ff3366" if "PUT" in signal else "#8b949e"
-        st.markdown(f"""
-        <div style='border: 1px solid {clr}; padding: 20px; border-radius: 15px; background: rgba(255,255,255,0.02); margin-bottom:15px;'>
-            <h3 style='margin:0'>{name}</h3>
-            <h1 style='color:{clr}; margin: 10px 0;'>{signal}</h1>
-            <p style='color:#8b949e'><b>Box Range:</b> High ₹{high:,.2f} | Low ₹{low:,.2f}</p>
-            <p style='font-size: 14px; font-weight: bold;'>Reason: {reason}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div style='border: 1px solid {clr}; padding: 20px; border-radius: 12px; background: rgba(255,255,255,0.02); margin-bottom:15px;'><h3>{name}</h3><h1 style='color:{clr}'>{signal}</h1><p>Box: {high:,.2f} - {low:,.2f} | {reason}</p></div>", unsafe_allow_html=True)
 
-elif menu == "Impulse Radar":
-    st.dataframe(df_s[df_s['Signal'] != "Neutral"].sort_values("Score", ascending=False), use_container_width=True, hide_index=True, column_config={"Score": st.column_config.ProgressColumn(min_value=0, max_value=150)})
-
-elif menu == "Sector Heatmap":
+elif menu == "Sector Radar":
     perf_df = pd.DataFrame(list(sector_data.items()), columns=['Sector', 'Chg%']).sort_values('Chg%', ascending=False)
     st.plotly_chart(px.bar(perf_df, x='Sector', y='Chg%', color='Chg%', color_continuous_scale=['#ff3366', '#00ff88'], color_continuous_midpoint=0, height=350), use_container_width=True)
     sel = st.selectbox("Select Sector:", perf_df['Sector'].tolist())
     st.dataframe(df_s[df_s['Sector']==sel].sort_values("Chg%", ascending=False), use_container_width=True, hide_index=True)
 
-elif menu == "Master List":
-    search = st.text_input("Search 212 Stocks...").upper()
-    disp = df_s[df_s['Symbol'].str.contains(search)] if search else df_s
-    st.dataframe(disp.sort_values("Chg%", ascending=False), use_container_width=True, hide_index=True)
+elif menu == "Admin Control":
+    st.subheader("🔐 Terminal Admin Panel")
+    st.session_state.score_threshold = st.slider("Global Probability Threshold (Score)", 50, 150, st.session_state.score_threshold)
+    st.session_state.vol_sens = st.slider("Minimum Vol Ratio for Radar", 0.1, 3.0, st.session_state.vol_sens)
+    st.write("---")
+    st.warning("All changes applied instantly to the Terminal and Radar views.")
+    st.write(f"Active Tickers: {len(ALL_STOCKS)} Stocks + 6 Indices")
