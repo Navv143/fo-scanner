@@ -1,16 +1,24 @@
-/* GLOBAL THEME */
-[data-testid="stAppViewContainer"] {
+/* FORCE MIDNIGHT THEME */
+[data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"], .main {
+    background-color: #05070a !important;
     background: radial-gradient(circle at top right, #1e293b, #05070a) !important;
-    color: #e2e8f0 !important;
+    color: #f8fafc !important;
 }
 
-/* BLINKING PRICE PULSE */
+html, body { background-color: #05070a !important; }
+
+/* PRICE BLINKING EFFECT */
 @keyframes neon-pulse {
     0% { color: #fff; } 50% { color: #38bdf8; text-shadow: 0 0 10px #0ea5e9; } 100% { color: #fff; }
 }
-.price-blink { animation: neon-pulse 3s infinite; font-family: 'JetBrains Mono', monospace; font-size: 24px !important; font-weight: 700; }
+.price-blink { 
+    animation: neon-pulse 3s infinite; 
+    font-family: 'JetBrains Mono', monospace; 
+    font-size: 24px !important; 
+    font-weight: 700; 
+}
 
-/* METRIC CARDS */
+/* CARDS & CONTAINERS */
 div[data-testid="stMetric"] {
     background: rgba(30, 41, 59, 0.4) !important;
     backdrop-filter: blur(10px);
@@ -19,7 +27,6 @@ div[data-testid="stMetric"] {
     padding: 15px !important;
 }
 
-/* MOBILE TRADE CARDS */
 .mobile-card {
     background: #161b22;
     border: 1px solid #30363d;
@@ -29,8 +36,12 @@ div[data-testid="stMetric"] {
     border-left: 6px solid #3b82f6;
 }
 
-.symbol-name { font-size: 18px; font-weight: 700; color: #58a6ff; }
-.badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #21262d; color: #8b949e; margin-right: 5px; }
+.strategy-card {
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
 
-/* FIXING SPACE ISSUES */
-.block-container { padding-top: 2rem !important; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #21262d; color: #8b949e; margin-right: 5px; }
