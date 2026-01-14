@@ -1,45 +1,43 @@
-/* FORCE MIDNIGHT TERMINAL THEME */
-[data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"], .main {
+/* GLOBAL THEME */
+[data-testid="stAppViewContainer"] {
     background-color: #05070a !important;
-    background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
-    color: #f8fafc !important;
+    padding: 5px !important;
 }
 
-html, body { background-color: #05070a !important; }
-
-/* Blinking Price Pulse */
-@keyframes neon-pulse {
-    0% { color: #fff; text-shadow: 0 0 5px #fff; }
-    50% { color: #38bdf8; text-shadow: 0 0 15px #0ea5e9; }
-    100% { color: #fff; text-shadow: 0 0 5px #fff; }
-}
-.price-blink {
-    animation: neon-pulse 3s infinite;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 24px !important;
-}
-
-/* Glassmorphism Cards */
+/* FORCE VERTICAL STACKING FOR MOBILE */
 div[data-testid="stMetric"] {
-    background: rgba(30, 41, 59, 0.4) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
     border-radius: 12px !important;
     padding: 15px !important;
+    min-width: 100% !important;
+    margin-bottom: 10px !important;
 }
 
-/* Momentum Pick Cards */
-.pro-card {
-    padding: 1.2rem;
+/* CUSTOM TRADING CARDS */
+.trade-card {
+    background: #161b22;
+    border: 1px solid #30363d;
     border-radius: 12px;
-    margin-bottom: 0.8rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-left: 6px solid;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 15px;
+    margin-bottom: 12px;
 }
-.bull-border { border-color: #10b981; box-shadow: -8px 0 15px rgba(16, 185, 129, 0.1); }
-.bear-border { border-color: #f43f5e; box-shadow: -8px 0 15px rgba(244, 63, 94, 0.1); }
 
-/* Table Cleanup */
-.stDataFrame div, .stDataFrame span, .stDataFrame p { color: #e2e8f0 !important; }
+.symbol-name { font-size: 18px; font-weight: 700; color: #58a6ff; }
+.ltp-price { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: #ffffff; }
+.badge { 
+    font-size: 10px; padding: 3px 8px; border-radius: 4px; 
+    background: #21262d; color: #8b949e; margin-right: 5px; 
+    text-transform: uppercase; font-weight: bold;
+}
+
+/* BLINKING PRICE PULSE */
+@keyframes neon-pulse {
+    0% { color: #fff; } 50% { color: #38bdf8; text-shadow: 0 0 10px #0ea5e9; } 100% { color: #fff; }
+}
+.price-blink { animation: neon-pulse 3s infinite; }
+
+/* HIDE SIDEBAR ON MOBILE FOR SPACE */
+@media (max-width: 600px) {
+    [data-testid="stSidebar"] { display: none; }
+}
